@@ -36,5 +36,20 @@ export class ApiService {
     return this.http.post(`${this.apiUrl}/BillingPayment/crearDocumento`, body);
   }
 
+  listarArchivosCarpeta(Carpeta: string): Observable<any> {
+    const params = new HttpParams()
+      .set('Carpeta', Carpeta);
+  
+    return this.http.get(`${this.apiUrl}/BillingPayment/listarArchivosCarpeta`, { params });
+  }
+
+  subirArchivoCarpeta(Carpeta: string, nombreArchivo:string, tipoArchivo:string): Observable<any> {
+    const params = new HttpParams()
+      .set('Carpeta', Carpeta)
+      .set('nombreArchivo', nombreArchivo)
+      .set('tipoArchivo', tipoArchivo);
+  
+    return this.http.get(`${this.apiUrl}/BillingPayment/subirArchivoCarpeta`, { params });
+  }
   
 }

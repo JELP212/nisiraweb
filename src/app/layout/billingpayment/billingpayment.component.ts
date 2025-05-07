@@ -59,6 +59,8 @@ export class BillingpaymentComponent implements AfterViewInit{
 
   mostrarCardCrear = false;
   mostrarCardSubir = false;
+  mostrarTablaArchivos: boolean = false;
+  archivosCarpeta: any[] = [];
 
   estructuraCarpetas: any[] = [];
 
@@ -287,5 +289,24 @@ export class BillingpaymentComponent implements AfterViewInit{
     } else {
       this.selectedProduct = product;
     }
+  }
+
+  verDetalle(idCarpeta: string) {
+    this.apiService.listarArchivosCarpeta(idCarpeta.trim()).subscribe({
+      next: (response) => {
+        this.archivosCarpeta = Array.isArray(response) ? response : [response];
+        this.mostrarTablaArchivos = true;
+      },
+      error: (err) => {
+        console.error('Error al obtener archivos:', err);
+      }
+    });
+    this.mostrarTablaArchivos = true;
+
+  }
+
+  cerrarVistaArchivos() {
+    this.mostrarTablaArchivos = false;
+    this.archivosCarpeta = [];
   }
 }
