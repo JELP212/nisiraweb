@@ -84,5 +84,38 @@ export class ApiService {
     );
   }
   
+  editarDocumento(body: {
+    idEmpresa: string;
+    idCarpeta: string;
+    idCobrarPagarDoc: string;
+    idArea: string;
+    estado: string;
+    revCtb: string;
+    fechaVcto: string;
+    fechaPago: string;
+    comentario: string;
+    revControl: string;
+    lca: string;
+    documento: string;
+    razonSocial: string;
+    srIgv: number;
+    tipoDet: string;
+    onsContable: string;
+    regimen: string;
+    importeBruto: number;
+    impuestos: number;
+    importeNeto: number;
+    moneda: string;
+    fechaProg: string;
+    fechaEmision: string;
+    periodo: string;
+    tipoMovimiento: string;
+    clasificacionLe: string;
+    observacionesGlosa: string;
+    fechaCreacion: string;
+    fechaModificacion: string;
+  }): Observable<any> {
+    return this.https.post(`${this.apiUrl}/BillingPayment/editarDocumento`, body);
+  }  
   
 }
