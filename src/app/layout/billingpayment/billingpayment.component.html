@@ -3,9 +3,9 @@
 <div class="min-h-screen bg-gray-100">
   <app-topbar></app-topbar>
 
-  <div class="px-6 py-4">
+  <div class="px-6 pt-4">
     <div class="flex justify-between items-center mt-4">
-      <app-title [title]="'Inicio'" [subtitle]="'Revisa tus reportes guardados'"></app-title>
+      <app-title [title]="'Documentos a pagar'" [subtitle]="'Sube o revisa documentos a pagar'"></app-title>
       <div class="flex gap-2">
         <button (click)="mostrarCardCrear = true" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-plus text-sm"></i>Crear</button>
         <button (click)="mostrarCardSubir = true" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-upload text-sm"></i>Subir en masa</button>
@@ -14,7 +14,7 @@
     
     <!-- Filtros de fecha -->
     <!-- Filtros de fecha -->
-<div class="flex justify-between mt-4 items-end">
+<div class="flex justify-between mt-4 items-end" *ngIf="!mostrarTablaArchivos">
   <!-- Calendarios -->
   <div class="flex gap-4">
     <div class="flex flex-col">
@@ -38,91 +38,90 @@
   </div>
 
   <!-- Tabla de reportes -->
-  <div class="mt-6 px-6" >
+  <div class="mt-2 px-6" >
     <div class="max-w-8xl mx-auto">
-      <p-table *ngIf="!mostrarTablaArchivos" [value]="products" [(selection)]="selectedProduct" dataKey="idCarpeta" selectionMode="single" [tableStyle]="{'min-width': '50rem'}">
-        <ng-template pTemplate="header">
-          <tr>
-            <th style="width: 3rem">
-            </th>
-            <th>Ver</th>
-            <th>Empresa</th>
-            <th>Carpeta</th>
-            <th>CobrarPagarDoc</th>
-            <th>Area</th>
-            <th>Estado</th>
-            <th>RevCont</th>
-            <th>Fecha Vcto</th>
-            <th>Fecha Pago</th>
-            <th>Comentario</th>
-            <th>RevControl</th>
-            <th>Lca</th>
-            <th>Documento</th>
-            <th>Razón Social</th>
-            <th>SrcIgv</th>
-            <th>TipoDet</th>
-            <th>OnsContable</th>
-            <th>Regimen</th>
-            <th>Importe Bruto</th>
-            <th>Impuestos</th>
-            <th>Importe Neto</th>
-            <th>Moneda</th>
-            <th>Fecha Prog</th>
-            <th>Fecha Emisión</th>
-            <th>Periodo</th>
-            <th>Tipo Movimiento</th>
-            <th>ClasificacionLe</th>
-            <th>ObservacionesGlosa</th>
-            <th>Fecha Creación</th>
-            <th>Fecha Modificación</th>
-          </tr>
-        </ng-template>
-        <ng-template pTemplate="body" let-product>
-          <tr [pSelectableRow]="product">
-            <td>
-              <p-checkbox 
-                [binary]="true"
-                [ngModel]="selectedProduct === product"
-                (onChange)="onCheckboxChange(product)">
-              </p-checkbox>
-            </td>
-            <td>
-              <button pButton pRipple icon="pi pi-eye" class="p-button-text" (click)="verDetalle(product.idCarpeta)"></button>
-            </td>
-            <td>{{ product.idEmpresa }}</td>
-            <td>{{ product.idCarpeta }}</td>
-            <td>{{ product.idCobrarPagoDoc }}</td>
-            <td>{{ product.idArea }}</td>
-            <td>{{ product.estado }}</td>
-            <td>{{ product.revCtb }}</td>
-            <td>{{ product.fechaVcto }}</td>
-            <td>{{ product.fechaPago }}</td>
-            <td>{{ product.comentario }}</td>
-            <td>{{ product.revControl }}</td>
-            <td>{{ product.lca }}</td>
-            <td>{{ product.documento }}</td>
-            <td>{{ product.razonSocial }}</td>
-            <td>{{ product.srIgv }}</td>
-            <td>{{ product.tipoDet }}</td>
-            <td>{{ product.onsContable }}</td>
-            <td>{{ product.regimen }}</td>
-            <td>{{ product.importeBruto }}</td>
-            <td>{{ product.impuestos }}</td>
-            <td>{{ product.importeNeto }}</td>
-            <td>{{ product.moneda }}</td>
-            <td>{{ product.fechaProg }}</td>
-            <td>{{ product.fechaEmision }}</td>
-            <td>{{ product.periodo }}</td>
-            <td>{{ product.tipoMovimiento }}</td>
-            <td>{{ product.clasificacionLe }}</td>
-            <td>{{ product.observacionesGlosa }}</td>
-            <td>{{ product.fechaCreacion }}</td>
-            <td>{{ product.fechaModificacion }}</td>
-          </tr>
-        </ng-template>
-      </p-table>
+      <dx-data-grid
+      *ngIf="!mostrarTablaArchivos"
+      class="bg-white rounded-xl shadow-sm border border-gray-200"
+      [dataSource]="products"
+      keyExpr="idCarpeta"
+      [selection]="{ mode: 'single' }"
+      [showBorders]="false"
+      [rowAlternationEnabled]="true"
+      [columnAutoWidth]="true"
+      [hoverStateEnabled]="true"
+      [showColumnLines]="false"
+      [showRowLines]="true"
+      (onRowDblClick)="onVerClick($event)"
+      (onRowUpdating)="onEditarDocumento($event)"
+    >
+      <dxo-editing
+        mode="row"
+        [allowUpdating]="true"
+        [useIcons]="true"
+      ></dxo-editing>
+
+      <dxi-column type="buttons" [width]="120" caption="">
+        <dxi-button name="edit" icon="edit"></dxi-button>
+        <dxi-button name="save" icon="save"></dxi-button>
+        <dxi-button name="cancel" icon="revert"></dxi-button>
+      </dxi-column>
+
+      <dxo-selection mode="single"></dxo-selection>
+
+      <!-- Nombre con ícono tipo carpeta -->
+      <dxi-column
+        dataField="idCarpeta"
+        [allowFiltering]="false"
+        [allowSorting]="false"
+        cellTemplate="cellTemplate"
+        caption="Nombre"
+        [width]="220"
+      ></dxi-column>
+      <div *dxTemplate="let data of 'cellTemplate'">
+        <a
+          (click)="verDetalle(data.value)"
+          class="flex items-center space-x-2 text-gray-700 hover:text-blue-700 font-medium cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h5.672a1.5 1.5 0 0 1 1.06.44l1.828 1.828A1.5 1.5 0 0 0 13.12 6H16.5A1.5 1.5 0 0 1 18 7.5v7A1.5 1.5 0 0 1 16.5 16h-13A1.5 1.5 0 0 1 2 14.5v-10z" />
+          </svg>
+          <span class="truncate">{{ data.value }}</span>
+        </a>
+      </div>
+
+      <!-- Resto de columnas -->
+      <dxi-column dataField="idCobrarPagoDoc" caption="CobrarPagarDoc"></dxi-column>
+      <dxi-column dataField="idArea" caption="Área"></dxi-column>
+      <dxi-column dataField="estado" caption="Estado"></dxi-column>
+      <dxi-column dataField="revCtb" caption="Rev. Cont."></dxi-column>
+      <dxi-column dataField="fechaVcto" caption="Fecha Vcto" dataType="date"></dxi-column>
+      <dxi-column dataField="fechaPago" caption="Fecha Pago" dataType="date"></dxi-column>
+      <dxi-column dataField="comentario" caption="Comentario"></dxi-column>
+      <dxi-column dataField="revControl" caption="Rev. Control"></dxi-column>
+      <dxi-column dataField="lca" caption="LCA"></dxi-column>
+      <dxi-column dataField="documento" caption="Documento"></dxi-column>
+      <dxi-column dataField="razonSocial" caption="Razón Social"></dxi-column>
+      <dxi-column dataField="srIgv" caption="Src IGV"></dxi-column>
+      <dxi-column dataField="tipoDet" caption="Tipo Det."></dxi-column>
+      <dxi-column dataField="onsContable" caption="Ons Contable"></dxi-column>
+      <dxi-column dataField="regimen" caption="Régimen"></dxi-column>
+      <dxi-column dataField="importeBruto" caption="Importe Bruto" dataType="number"></dxi-column>
+      <dxi-column dataField="impuestos" caption="Impuestos" dataType="number"></dxi-column>
+      <dxi-column dataField="importeNeto" caption="Importe Neto" dataType="number"></dxi-column>
+      <dxi-column dataField="moneda" caption="Moneda"></dxi-column>
+      <dxi-column dataField="fechaProg" caption="Fecha Prog." dataType="date"></dxi-column>
+      <dxi-column dataField="fechaEmision" caption="Fecha Emisión" dataType="date"></dxi-column>
+      <dxi-column dataField="periodo" caption="Periodo"></dxi-column>
+      <dxi-column dataField="tipoMovimiento" caption="Tipo Movimiento"></dxi-column>
+      <dxi-column dataField="clasificacionLe" caption="Clasificación LE"></dxi-column>
+      <dxi-column dataField="observacionesGlosa" caption="Observaciones"></dxi-column>
+      <dxi-column dataField="fechaCreacion" caption="Fecha Creación" dataType="date"></dxi-column>
+      <dxi-column dataField="fechaModificacion" caption="Fecha Modificación" dataType="date"></dxi-column>
+    </dx-data-grid>
+
       <div *ngIf="mostrarTablaArchivos">
-        <p-button label="Cerrar" icon="pi pi-times" class="p-button-danger mb-3" (click)="cerrarVistaArchivos()"></p-button>
+        <p-button label="Regresar" icon="pi pi-angle-left" variant="text" (click)="cerrarVistaArchivos()"></p-button>
   
         <p-table [value]="archivosCarpeta" [tableStyle]="{'min-width': '50rem'}">
           <ng-template pTemplate="header">
@@ -147,6 +146,9 @@
     </div>
   </div>
 </div>
+
+
+
 
 
 <!-- Card flotante para 'Crear' -->

@@ -20,6 +20,8 @@
     "@angular/router": "^19.2.0",
     "@primeng/themes": "^19.1.2",
     "@tailwindcss/postcss": "^4.1.5",
+    "devextreme": "^24.2.7",
+    "devextreme-angular": "^24.2.7",
     "primeicons": "^7.0.0",
     "primeng": "^19.1.2",
     "rxjs": "~7.8.0",

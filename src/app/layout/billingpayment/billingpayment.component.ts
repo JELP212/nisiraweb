@@ -18,6 +18,10 @@ import { FileUpload } from 'primeng/fileupload';
 import { ApiService } from '../../core/api.service';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+
+import { DxDataGridModule } from 'devextreme-angular';
+import { DxButtonModule } from 'devextreme-angular';
+
 interface Product {
   id?: string;
   code?: string;
@@ -49,7 +53,9 @@ interface Carpeta {
     ButtonModule,
     InputTextModule,
     SelectModule,CardModule,FileUploadModule,DialogModule,
-    FileUpload,ToastModule
+    FileUpload,ToastModule,
+    DxDataGridModule,
+    DxButtonModule
   ],
   providers: [MessageService],
   templateUrl: './billingpayment.component.html',
@@ -104,11 +110,30 @@ export class BillingpaymentComponent implements AfterViewInit{
   }
 
   ngOnInit() {
+    this.setupLicenseObserver();
+
     const hoy = new Date();
   this.fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
   this.fechaFin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
   this.filtrarPorFechas();
 
+  }
+
+  setupLicenseObserver() {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeName === 'DX-LICENSE') {
+            (node as HTMLElement).remove();
+          }
+        });
+      });
+    });
+  
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
   }
 
   onRowEditInit(product: Product) {
@@ -385,6 +410,10 @@ export class BillingpaymentComponent implements AfterViewInit{
     }
   }
 
+  onVerClick(e: any): void {
+    this.verDetalle(e.data?.idCarpeta);
+  }  
+
   verDetalle(idCarpeta: string) {
     this.apiService.listarArchivosCarpeta(idCarpeta.trim()).subscribe({
       next: (response) => {
@@ -398,6 +427,40 @@ export class BillingpaymentComponent implements AfterViewInit{
     this.mostrarTablaArchivos = true;
 
   }
+
+  onEditarDocumento(e: any) {
+    // Combinar datos antiguos y nuevos
+    const mergedData = { ...e.oldData, ...e.newData };
+  
+    // Filtrar campos vacíos, null o undefined
+    const cleanedData: any = {};
+    for (const key in mergedData) {
+      const value = mergedData[key];
+      if (value !== '' && value !== null && value !== undefined) {
+        cleanedData[key] = value;
+      }
+    }
+  
+    // Llamar a la API
+    this.apiService.editarDocumento(cleanedData).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Éxito',
+          detail: 'Documento actualizado correctamente'
+        });
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se pudo actualizar el documento'
+        });
+        e.cancel = true; // cancela visualmente la edición
+      }
+    });
+  }
+  
 
   cerrarVistaArchivos() {
     this.mostrarTablaArchivos = false;
