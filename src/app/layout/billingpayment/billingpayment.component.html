@@ -1,4 +1,5 @@
 <!-- REPORTES -->
+<p-toast></p-toast>
 <div class="min-h-screen bg-gray-100">
   <app-topbar></app-topbar>
 
@@ -6,36 +7,39 @@
     <div class="flex justify-between items-center mt-4">
       <app-title [title]="'Inicio'" [subtitle]="'Revisa tus reportes guardados'"></app-title>
       <div class="flex gap-2">
-        <button pButton type="button" label="Crear" icon="pi pi-plus" (click)="mostrarCardCrear = true"></button>
-        <button pButton type="button" label="Subir en masa" icon="pi pi-upload" (click)="mostrarCardSubir = true" class="p-button-outlined"></button>
+        <button (click)="mostrarCardCrear = true" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-plus text-sm"></i>Crear</button>
+        <button (click)="mostrarCardSubir = true" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-upload text-sm"></i>Subir en masa</button>
       </div>
     </div>
     
     <!-- Filtros de fecha -->
-    <div class="flex gap-4 mt-4 items-end">
-      <!-- Calendarios ya existentes -->
-      <div class="flex flex-col">
-        <label for="fechaInicio" class="text-sm text-sky-900 font-medium mb-1">Fecha inicio</label>
-        <p-calendar inputId="fechaInicio" [(ngModel)]="fechaInicio" dateFormat="yy-mm-dd" showIcon="true" class="w-full" />
-      </div>
-    
-      <div class="flex flex-col">
-        <label for="fechaFin" class="text-sm text-sky-900 font-medium mb-1">Fecha fin</label>
-        <p-calendar inputId="fechaFin" [(ngModel)]="fechaFin" dateFormat="yy-mm-dd" showIcon="true" class="w-full" />
-      </div>
-    
-      <!-- Botones nuevos -->
-      <div class="flex gap-2 mb-1">
-        <button pButton label="Filtrar" icon="pi pi-filter" (click)="filtrarPorFechas()"></button>
-        <button pButton label="Excel" icon="pi pi-file-excel" class="p-button-success" (click)="descargarExcel()"></button>
-      </div>
+    <!-- Filtros de fecha -->
+<div class="flex justify-between mt-4 items-end">
+  <!-- Calendarios -->
+  <div class="flex gap-4">
+    <div class="flex flex-col">
+      <label for="fechaInicio" class="text-sm text-sky-900 font-medium mb-1">Fecha inicio</label>
+      <p-calendar inputId="fechaInicio" [(ngModel)]="fechaInicio" dateFormat="yy-mm-dd" showIcon="true" class="w-full" />
     </div>
+    <div class="flex flex-col">
+      <label for="fechaFin" class="text-sm text-sky-900 font-medium mb-1">Fecha fin</label>
+      <p-calendar inputId="fechaFin" [(ngModel)]="fechaFin" dateFormat="yy-mm-dd" showIcon="true" class="w-full" />
+    </div>
+  </div>
+
+  <!-- Botones -->
+  <div class="flex gap-2">
+    <button (click)="filtrarPorFechas()" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-filter text-sm"></i>Filtrar</button>
+    <button (click)="descargarExcel()" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-file-excel text-sm"></i>Excel</button>
+  </div>
+</div>
+
     
   </div>
 
   <!-- Tabla de reportes -->
   <div class="mt-6 px-6" >
-    <div class="max-w-6xl mx-auto">
+    <div class="max-w-8xl mx-auto">
       <p-table *ngIf="!mostrarTablaArchivos" [value]="products" [(selection)]="selectedProduct" dataKey="idCarpeta" selectionMode="single" [tableStyle]="{'min-width': '50rem'}">
         <ng-template pTemplate="header">
           <tr>
@@ -153,7 +157,7 @@
     <input pInputText placeholder="Número" [(ngModel)]="nuevoDocumento.numero">
     <div class="flex justify-end gap-2 mt-4">
       <button pButton label="Cancelar" (click)="mostrarCardCrear = false" class="p-button-secondary"></button>
-      <button pButton label="Guardar" (click)="crearDocumento()"></button>
+      <button (click)="crearDocumento()" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center">Guardar</button>
     </div>
   </div>
 </p-dialog>
@@ -171,7 +175,7 @@
   </div>
 
   <div class="mt-4 flex justify-end gap-2">
-    <button pButton label="Subir" icon="pi pi-upload" class="p-button-success" (click)="subirCarpetas()"></button>
+    <button (click)="subirCarpetas()"class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block "><i class="pi pi-upload text-sm"></i>Subir</button>
     <button pButton label="Cancelar" icon="pi pi-times" class="p-button-secondary" (click)="cancelarSubida()"></button>
   </div>
 

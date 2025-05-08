@@ -16,6 +16,8 @@ import { FileUploadModule } from 'primeng/fileupload';
 import { DialogModule } from 'primeng/dialog';
 import { FileUpload } from 'primeng/fileupload';
 import { ApiService } from '../../core/api.service';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 interface Product {
   id?: string;
   code?: string;
@@ -28,7 +30,11 @@ interface Product {
   image?: string;
   rating?: number;
 }
-
+interface Carpeta {
+  nombre: string;
+  archivos: string[];
+  files: File[]; // Para subir
+}
 @Component({
   selector: 'app-billingpayment',
   standalone: true,
@@ -43,8 +49,9 @@ interface Product {
     ButtonModule,
     InputTextModule,
     SelectModule,CardModule,FileUploadModule,DialogModule,
-    FileUpload
+    FileUpload,ToastModule
   ],
+  providers: [MessageService],
   templateUrl: './billingpayment.component.html',
   styleUrl: './billingpayment.component.css'
 })
@@ -67,7 +74,10 @@ export class BillingpaymentComponent implements AfterViewInit{
   products: any[] = [];
   selectedProduct: any;
   
-  constructor(private apiService: ApiService) { }
+  estructuraCarpeta: Carpeta[] = [];
+  idEmpresa = '001';
+
+  constructor(private apiService: ApiService,private messageService: MessageService) { }
 
   nuevoDocumento = {
     ruc: '',
@@ -94,6 +104,10 @@ export class BillingpaymentComponent implements AfterViewInit{
   }
 
   ngOnInit() {
+    const hoy = new Date();
+  this.fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  this.fechaFin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+  this.filtrarPorFechas();
 
   }
 
@@ -134,13 +148,22 @@ export class BillingpaymentComponent implements AfterViewInit{
   
     this.apiService.crearDocumento(idEmpresa, idCarpeta).subscribe({
       next: (res) => {
-        console.log('Documento creado con éxito:', res);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Éxito',
+          detail: 'Documento creado correctamente'
+        });
         this.mostrarCardCrear = false;
         // aquí podrías limpiar el formulario si deseas
         this.nuevoDocumento = { ruc: '', serie: '', numero: '' };
       },
       error: (err) => {
         console.error('Error al crear documento:', err);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se pudo crear el documento'
+        });
       }
     });
   }
@@ -150,7 +173,11 @@ export class BillingpaymentComponent implements AfterViewInit{
   }
   
   subirArchivos(event: any) {
-    console.log('Archivos subidos:', event.files);
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Subida exitosa',
+      detail: 'Archivos subidos correctamente'
+    });
     this.cerrarCardSubir();
   }
   
@@ -161,7 +188,11 @@ export class BillingpaymentComponent implements AfterViewInit{
   
   filtrarPorFechas() {
   if (!this.fechaInicio || !this.fechaFin) {
-    alert('Por favor selecciona ambas fechas');
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Faltan datos',
+      detail: 'Por favor selecciona ambas fechas'
+    });
     return;
   }
 
@@ -174,6 +205,11 @@ export class BillingpaymentComponent implements AfterViewInit{
     },
     error: (err) => {
       console.error('Error al filtrar documentos:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudieron filtrar los documentos'
+      });
     }
   });
 }
@@ -226,22 +262,31 @@ export class BillingpaymentComponent implements AfterViewInit{
     const items = event.dataTransfer?.items;
   
     if (items) {
-      const nuevasCarpetas: { [key: string]: string[] } = {};
+      const nuevasCarpetas: { [key: string]: { archivos: string[], files: File[] } } = {};
+  
+      const promesas = [];
       for (let i = 0; i < items.length; i++) {
         const item = items[i].webkitGetAsEntry?.();
         if (item && item.isDirectory) {
-          this.readDirectory(item, nuevasCarpetas).then(() => {
-            this.estructuraCarpetas = Object.keys(nuevasCarpetas).map(nombre => ({
-              nombre,
-              archivos: nuevasCarpetas[nombre]
-            }));
-          });
+          promesas.push(this.readDirectory(item, nuevasCarpetas));
         }
       }
+  
+      Promise.all(promesas).then(() => {
+        const estructura = Object.keys(nuevasCarpetas).map(nombre => ({
+          nombre,
+          archivos: nuevasCarpetas[nombre].archivos,
+          files: nuevasCarpetas[nombre].files
+        }));
+  
+        this.estructuraCarpetas = estructura;
+        this.estructuraCarpeta = estructura; // 🛠️ Aquí sí se llena para el upload
+      });
     }
   }
   
-  readDirectory(item: any, carpetaMap: { [key: string]: string[] }): Promise<void> {
+  
+  readDirectory(item: any, carpetaMap: { [key: string]: { archivos: string[], files: File[] } }): Promise<void> {
     return new Promise((resolve) => {
       const reader = item.createReader();
       reader.readEntries((entries: any[]) => {
@@ -250,8 +295,11 @@ export class BillingpaymentComponent implements AfterViewInit{
             return new Promise<void>((res) => {
               entry.file((file: File) => {
                 const carpetaNombre = item.name;
-                if (!carpetaMap[carpetaNombre]) carpetaMap[carpetaNombre] = [];
-                carpetaMap[carpetaNombre].push(file.name);
+                if (!carpetaMap[carpetaNombre]) {
+                  carpetaMap[carpetaNombre] = { archivos: [], files: [] };
+                }
+                carpetaMap[carpetaNombre].archivos.push(file.name);
+                carpetaMap[carpetaNombre].files.push(file);
                 res();
               });
             });
@@ -267,16 +315,62 @@ export class BillingpaymentComponent implements AfterViewInit{
     });
   }
   
-  subirEstructura() {
-    console.log("Subiendo estructura:", this.estructuraCarpetas);
-    // Aquí iría la lógica para enviar al backend
-  }
   
-  subirCarpetas() {
-    // Aquí debes manejar el upload real a tu API si lo deseas
-    console.log('Subiendo:', this.estructuraCarpetas);
+  
+  subirCarpetas(): void {
+    this.estructuraCarpeta.forEach(carpeta => {
+      const idCarpeta = carpeta.nombre;
+  
+      this.apiService.existeDocumento(this.idEmpresa, idCarpeta).subscribe({
+        next: (res) => {
+          if (res.success === false) {
+            // Crear carpeta si no existe
+            this.apiService.crearDocumento(this.idEmpresa, idCarpeta).subscribe({
+              next: () => {
+                // Subir todos los archivos
+                carpeta.files.forEach(file => {
+                  const nombreArchivo = file.name.split('.').slice(0, -1).join('.') || file.name;
+                  const tipoArchivo = file.type;
+  
+                  this.apiService.subirArchivoCarpeta(idCarpeta, nombreArchivo, tipoArchivo, file).subscribe({
+                    next: () => {
+                      this.messageService.add({
+                        severity: 'info',
+                        summary: 'Archivo subido',
+                        detail: `${file.name} subido correctamente`
+                      });
+                    },
+                    error: (err) => {
+                      this.messageService.add({
+                        severity: 'error',
+                        summary: 'Error de subida',
+                        detail: `No se pudo subir ${file.name}`
+                      });
+                    }
+                  });
+                });
+              },
+              error: (err) => {
+                console.error(`Error al crear la carpeta ${idCarpeta}:`, err);
+              }
+            });
+          } else {
+            this.messageService.add({
+              severity: 'warn',
+              summary: 'Carpeta duplicada',
+              detail: `La carpeta "${idCarpeta}" ya fue registrada`
+            });
+          }
+        },
+        error: (err) => {
+          console.error(`Error verificando existencia de carpeta ${idCarpeta}:`, err);
+        }
+      });
+    });
+  
     this.mostrarCardSubir = false; // Cierra el diálogo
   }
+  
   
   cancelarSubida() {
     this.estructuraCarpetas = [];
