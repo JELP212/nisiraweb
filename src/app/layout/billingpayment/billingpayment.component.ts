@@ -76,6 +76,8 @@ export class BillingpaymentComponent implements AfterViewInit{
   archivosCarpeta: any[] = [];
 
   estructuraCarpetas: any[] = [];
+  carpetaSeleccionada: string = '';
+  dropActive = false;
 
   products: any[] = [];
   selectedProduct: any;
@@ -179,7 +181,6 @@ export class BillingpaymentComponent implements AfterViewInit{
           detail: 'Documento creado correctamente'
         });
         this.mostrarCardCrear = false;
-        // aquí podrías limpiar el formulario si deseas
         this.nuevoDocumento = { ruc: '', serie: '', numero: '' };
       },
       error: (err) => {
@@ -191,6 +192,7 @@ export class BillingpaymentComponent implements AfterViewInit{
         });
       }
     });
+    this.filtrarPorFechas()
   }
   
   cerrarCardCrear() {
@@ -415,6 +417,7 @@ export class BillingpaymentComponent implements AfterViewInit{
   }  
 
   verDetalle(idCarpeta: string) {
+    this.carpetaSeleccionada = idCarpeta;
     this.apiService.listarArchivosCarpeta(idCarpeta.trim()).subscribe({
       next: (response) => {
         this.archivosCarpeta = Array.isArray(response) ? response : [response];
@@ -460,10 +463,65 @@ export class BillingpaymentComponent implements AfterViewInit{
       }
     });
   }
-  
 
   cerrarVistaArchivos() {
     this.mostrarTablaArchivos = false;
     this.archivosCarpeta = [];
+    this.carpetaSeleccionada = '';
   }
+
+  abrirArchivo(e: any): void {
+    console.log(e)
+    const url = e?.data?.url;
+    if (url) {
+      window.open(url, '_blank');
+    }
+  }
+
+  formatSize(rowData: any): string {
+    const size = rowData.size;
+    if (size == null || isNaN(size)) return '0 bytes';
+  
+    if (size < 1024) {
+      return `${size} bytes`;
+    } else if (size < 1024 * 1024) {
+      const kb = size / 1024;
+      return `${kb.toFixed(2)} KB`;
+    } else {
+      const mb = size / (1024 * 1024);
+      return `${mb.toFixed(2)} MB`;
+    }
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    this.dropActive = true;
+  }
+  
+  onDragLeave(event: DragEvent) {
+    event.preventDefault();
+    this.dropActive = false;
+  }
+  
+  onFileDrop(event: DragEvent) {
+    event.preventDefault();
+    this.dropActive = false;
+  
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const archivo = files[0];
+      const nombreSinExtension = archivo.name.replace(/\.[^/.]+$/, "");
+      const tipo = archivo.type;
+  
+      this.apiService.subirArchivoCarpeta(this.carpetaSeleccionada.trim().replace(/\s+/g, '_'), nombreSinExtension, tipo, archivo).subscribe({
+        next: () => {
+          this.verDetalle(this.carpetaSeleccionada.trim().replace(/\s+/g, '_'));
+        },
+        error: err => {
+          console.error('Error al subir:', err);
+        }
+      });
+    }
+  }
+  
 }

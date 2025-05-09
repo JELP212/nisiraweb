@@ -55,13 +55,25 @@
       (onRowDblClick)="onVerClick($event)"
       (onRowUpdating)="onEditarDocumento($event)"
     >
+    <dxo-paging [pageSize]="15"></dxo-paging>
+
+    <dxo-pager
+      [visible]="true"
+      [allowedPageSizes]="[10, 15, 30, 50]"
+      [displayMode]="'full'"
+      [showPageSizeSelector]="true"
+      [showInfo]="true"
+      [showNavigationButtons]="true"
+    >
+    </dxo-pager>
+
       <dxo-editing
         mode="row"
         [allowUpdating]="true"
         [useIcons]="true"
       ></dxo-editing>
 
-      <dxi-column type="buttons" [width]="120" caption="">
+      <dxi-column type="buttons" [width]="60" caption="">
         <dxi-button name="edit" icon="edit"></dxi-button>
         <dxi-button name="save" icon="save"></dxi-button>
         <dxi-button name="cancel" icon="revert"></dxi-button>
@@ -122,25 +134,56 @@
 
       <div *ngIf="mostrarTablaArchivos">
         <p-button label="Regresar" icon="pi pi-angle-left" variant="text" (click)="cerrarVistaArchivos()"></p-button>
-  
-        <p-table [value]="archivosCarpeta" [tableStyle]="{'min-width': '50rem'}">
-          <ng-template pTemplate="header">
-            <tr>
-              <th>Nombre</th>
-              <th>Tamaño</th>
-              <th>Última Modificación</th>
-              <th>Enlace</th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-archivo>
-            <tr>
-              <td>{{ archivo.name }}</td>
-              <td>{{ archivo.size | number }} bytes</td>
-              <td>{{ archivo.lastModified | date:'medium' }}</td>
-              <td><a [href]="archivo.url" target="_blank">Ver Archivo</a></td>
-            </tr>
-          </ng-template>
-        </p-table>
+      
+        <div
+          class="relative min-h-full"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onFileDrop($event)"
+        >
+          <!-- ZONA DE DROP -->
+          <div
+            class="absolute top-0 left-0 right-0 bottom-0 z-10 bg-white bg-opacity-70 border-4 border-dashed border-sky-600 flex items-center justify-center text-sky-700 font-semibold text-sm transition-opacity duration-200 pointer-events-none"
+            [ngClass]="{ 'opacity-100': dropActive, 'opacity-0': !dropActive }"
+          >
+            Suelta los archivos aquí para subirlos
+          </div>
+        
+          <!-- TABLA -->
+          <dx-data-grid
+            [dataSource]="archivosCarpeta"
+            [columnAutoWidth]="true"
+            [rowAlternationEnabled]="true"
+            [hoverStateEnabled]="true"
+            [showBorders]="false"
+            [showColumnLines]="false"
+            [showRowLines]="true"
+            class="rounded-xl shadow-sm border border-gray-200 text-sm font-sans"
+            (onRowDblClick)="abrirArchivo($event)"
+          >
+            <dxi-column
+              dataField="name"
+              caption="Nombre"
+              cssClass="px-4 py-3 text-gray-800 font-medium"
+            ></dxi-column>
+          
+            <dxi-column
+              dataField="size"
+              caption="Tamaño"
+              [calculateCellValue]="formatSize"
+              cssClass="px-4 py-3 text-gray-700"
+            ></dxi-column>
+          
+            <dxi-column
+              dataField="lastModified"
+              caption="Última Modificación"
+              dataType="date"
+              cssClass="px-4 py-3 text-gray-600"
+            ></dxi-column>
+          </dx-data-grid>
+        </div>
+        
+      
       </div>
   
     </div>
@@ -153,14 +196,30 @@
 
 <!-- Card flotante para 'Crear' -->
 <p-dialog header="Crear documento" [(visible)]="mostrarCardCrear" [modal]="true" [style]="{width: '400px'}">
-  <div class="flex flex-col gap-3 mt-2">
-    <input pInputText placeholder="RUC" [(ngModel)]="nuevoDocumento.ruc">
-    <input pInputText placeholder="Serie" [(ngModel)]="nuevoDocumento.serie">
-    <input pInputText placeholder="Número" [(ngModel)]="nuevoDocumento.numero">
-    <div class="flex justify-end gap-2 mt-4">
-      <button pButton label="Cancelar" (click)="mostrarCardCrear = false" class="p-button-secondary"></button>
-      <button (click)="crearDocumento()" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center">Guardar</button>
+  <div class="flex flex-col gap-3 mt-1">
+
+    <div class="flex flex-col">
+      <label for="ruc" class="text-sm font-medium mb-1">RUC</label>
+      <input id="ruc" pInputText [(ngModel)]="nuevoDocumento.ruc" class="w-full" />
     </div>
+
+    <div class="flex gap-3">
+      <div class="flex flex-col w-1/2">
+        <label for="serie" class="text-sm font-medium mb-1">Serie</label>
+        <input id="serie" pInputText [(ngModel)]="nuevoDocumento.serie" class="w-full" />
+      </div>
+
+      <div class="flex flex-col w-1/2">
+        <label for="numero" class="text-sm font-medium mb-1">Número</label>
+        <input id="numero" pInputText [(ngModel)]="nuevoDocumento.numero" class="w-full" />
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2 mt-3">
+      <button pButton label="Cancelar" (click)="mostrarCardCrear = false" class="p-button-secondary"></button>
+      <button pButton label="Guardar" (click)="crearDocumento()" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm"></button>
+    </div>
+
   </div>
 </p-dialog>
 
@@ -176,11 +235,6 @@
     Arrastra carpetas aquí
   </div>
 
-  <div class="mt-4 flex justify-end gap-2">
-    <button (click)="subirCarpetas()"class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block "><i class="pi pi-upload text-sm"></i>Subir</button>
-    <button pButton label="Cancelar" icon="pi pi-times" class="p-button-secondary" (click)="cancelarSubida()"></button>
-  </div>
-
   <div *ngIf="estructuraCarpetas.length > 0" class="mt-4 max-h-64 overflow-y-auto border rounded p-3 bg-gray-50">
     <p class="text-sky-800 text-sm font-semibold mb-2">Estructura de carpetas:</p>
     <ul class="text-sm text-gray-700">
@@ -192,4 +246,10 @@
       </li>
     </ul>
   </div>
+
+  <div class="mt-4 flex justify-end gap-2">
+    <button pButton label="Cancelar" icon="pi pi-times" class="p-button-secondary" (click)="cancelarSubida()"></button>
+    <button (click)="subirCarpetas()"class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block "><i class="pi pi-upload text-sm"></i>Subir</button>
+  </div>
+
 </p-dialog>
