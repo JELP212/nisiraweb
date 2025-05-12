@@ -18,6 +18,8 @@ import { FileUpload } from 'primeng/fileupload';
 import { ApiService } from '../../core/api.service';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { ContextMenuModule } from 'primeng/contextmenu';
+import { MenuItem } from 'primeng/api';
 
 import { DxDataGridModule } from 'devextreme-angular';
 import { DxButtonModule } from 'devextreme-angular';
@@ -54,6 +56,7 @@ interface Carpeta {
     InputTextModule,
     SelectModule,CardModule,FileUploadModule,DialogModule,
     FileUpload,ToastModule,
+    ContextMenuModule,
     DxDataGridModule,
     DxButtonModule
   ],
@@ -64,6 +67,7 @@ interface Carpeta {
 export class BillingpaymentComponent implements AfterViewInit{
   @ViewChild('dt') table!: Table;
   @ViewChild('fileUploader') fileUploader!: FileUpload;
+  menuItems: MenuItem[] = [];
 
   fechaInicio?: Date;
   fechaFin?: Date;
@@ -115,10 +119,9 @@ export class BillingpaymentComponent implements AfterViewInit{
     this.setupLicenseObserver();
 
     const hoy = new Date();
-  this.fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  this.fechaFin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-  this.filtrarPorFechas();
-
+    this.fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    this.fechaFin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+    this.filtrarPorFechas();
   }
 
   setupLicenseObserver() {
@@ -138,6 +141,34 @@ export class BillingpaymentComponent implements AfterViewInit{
     });
   }
 
+  onRightClick(event: MouseEvent, idCarpeta: any, contextMenu: any) {
+    event.preventDefault();
+    event.stopPropagation(); // Evita que el evento se propague
+    
+    this.menuItems = [
+      {
+        label: 'Ver detalles',
+        icon: 'pi pi-search',
+        command: () => this.verDetalle(idCarpeta)
+      },
+      /* Otras opciones */
+    ];
+    
+    // Usamos el componente directamente pasado como parámetro
+    contextMenu.show(event);
+    
+    // Opcional: prevenir el scroll
+    const container = event.currentTarget as HTMLElement;
+    container.addEventListener('scroll', this.preventScroll, { passive: false });
+    setTimeout(() => {
+      container.removeEventListener('scroll', this.preventScroll);
+    }, 100);
+  }
+
+  private preventScroll(e: Event) {
+      e.preventDefault();
+      e.stopPropagation();
+  }
   onRowEditInit(product: Product) {
     // Si ya hay una fila editándose, cancela la anterior
     if (this.productoEditando && this.productoEditando.id !== product.id) {
