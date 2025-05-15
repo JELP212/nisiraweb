@@ -23,6 +23,13 @@ import { MenuItem } from 'primeng/api';
 
 import { DxDataGridModule } from 'devextreme-angular';
 import { DxButtonModule } from 'devextreme-angular';
+import { Router, ActivatedRoute } from '@angular/router';
+
+import * as XLSX from 'xlsx';
+import { HttpParams } from '@angular/common/http';
+import { saveAs } from 'file-saver';
+import * as FileSaver from 'file-saver';
+import { forkJoin } from 'rxjs';
 
 interface Product {
   id?: string;
@@ -67,16 +74,17 @@ interface Carpeta {
 export class BillingpaymentComponent implements AfterViewInit{
   @ViewChild('dt') table!: Table;
   @ViewChild('fileUploader') fileUploader!: FileUpload;
+  
   menuItems: MenuItem[] = [];
 
-  fechaInicio?: Date;
-  fechaFin?: Date;
 
   seleccionados: any[] = [];
 
   mostrarCardCrear = false;
   mostrarCardSubir = false;
   mostrarTablaArchivos: boolean = false;
+  mostrarTablaCarpetas: boolean = false;
+
   archivosCarpeta: any[] = [];
 
   estructuraCarpetas: any[] = [];
@@ -89,7 +97,64 @@ export class BillingpaymentComponent implements AfterViewInit{
   estructuraCarpeta: Carpeta[] = [];
   idEmpresa = '001';
 
-  constructor(private apiService: ApiService,private messageService: MessageService) { }
+  carpetasRaiz: any[] = [];
+
+  carpetaActual = { idCarpetaPadre: null, final: false, idCarpeta: null };
+  regimen = [
+    { idRegimen: '01', descripcion: 'Afecto' },
+    { idRegimen: '02', descripcion: 'Afecto/Inafecto' },
+    { idRegimen: '03', descripcion: 'Inafecto' }
+  ];
+  regimenSeleccionado: string = '';
+
+  moneda = [
+    { idMoneda: '01', descripcion: 'Soles' },
+    { idMoneda: '02', descripcion: 'Dolares Americanos' },
+    { idMoneda: '03', descripcion: 'Euros' }
+  ];
+  monedaSeleccionado: string = '';
+
+  impuestos = [
+    { idImpuestos: '10', descripcion: '10%' },
+    { idImpuestos: '18', descripcion: '18%' }
+  ];
+  impuestosSeleccionado: string = '';
+
+  obs = [
+    { idObs: '01', descripcion: 'APL.NRC' },
+    { idObs: '02', descripcion: 'PEND SUSTENTO' },
+    { idObs: '03', descripcion: 'PUB.ASUM' },
+    { idObs: '04', descripcion: 'PUB.REFAC' }
+  ];
+  obsSeleccionado: string = '';
+
+  rev = [
+    { idRev: '01', descripcion: 'CONFORME' },
+    { idRev: '02', descripcion: 'PEND FAC' }
+  ];
+  revSeleccionado: string = '';
+
+  igv = [
+    { idigv: '1', descripcion: 'NA' },
+    { idigv: '2', descripcion: 'DET' },
+    { idigv: '3', descripcion: 'RET' }
+  ];
+  igvSeleccionado: string = '';
+
+  area: any[] = [];
+  tipoDet: any[] = [];
+  tipoMovimiento: any[] = [];
+  clasificacionLE: any[] = [];
+
+  areaSeleccionado: string = '';
+  tipoDetSeleccionado: string = '';
+  tipoMovimientoSeleccionado: string = '';
+  clasificacionLESeleccionado: string = '';
+
+  constructor(private apiService: ApiService,private messageService: MessageService, private route: ActivatedRoute, // Para leer parámetros de ruta actuales
+    private router: Router) {
+
+    }
 
   nuevoDocumento = {
     ruc: '',
@@ -116,12 +181,61 @@ export class BillingpaymentComponent implements AfterViewInit{
   }
 
   ngOnInit() {
-    this.setupLicenseObserver();
 
-    const hoy = new Date();
-    this.fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    this.fechaFin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-    this.filtrarPorFechas();
+    this.route.queryParams.subscribe(params => {
+      const idCarpeta = params['idcarpeta'] || params['idCarpeta'];
+      const idDocumento = params['iddocumento'] || params['idDocumento'];
+
+      if (idCarpeta && idDocumento) {
+        this.mostrarTablaArchivos = true;
+        this.mostrarTablaCarpetas = true;
+        this.apiService.listarArchivosCarpeta(idDocumento.trim()).subscribe({
+          next: (response) => {
+            this.archivosCarpeta = Array.isArray(response) ? response : [response];
+            this.mostrarTablaArchivos = true;
+            this.mostrarTablaCarpetas = true;
+          },
+          error: (err) => {
+            console.error('Error al obtener archivos desde la URL:', err);
+          }
+        });
+        return;
+      }
+  
+      // Lógica anterior si solo hay idCarpeta
+      if (idCarpeta) {
+        this.apiService.listarCarpeta(idCarpeta).subscribe((res) => {
+            this.carpetasRaiz = res.data;
+            this.verDetalle(this.carpetasRaiz[0].idCarpeta);
+        });
+      } else {
+        this.cargarCarpetas();
+      }
+    });
+
+    this.setupLicenseObserver();
+    
+    this.apiService.opcionArea().subscribe(res => {
+    this.area = res.data;
+  });
+
+  this.apiService.opciontipoDet().subscribe(res => {
+    this.tipoDet = res.data;
+  });
+
+  this.apiService.opcionTipoMovimiento().subscribe(res => {
+    this.tipoMovimiento = res.data;
+  });
+
+  this.apiService.opcionClasificacionLE().subscribe(res => {
+    this.clasificacionLE = res.data;
+  });
+  }
+
+  cargarCarpetas() {
+    this.apiService.listarCarpeta('').subscribe((res) => {
+      this.carpetasRaiz = res.data; 
+    });
   }
 
   setupLicenseObserver() {
@@ -149,7 +263,7 @@ export class BillingpaymentComponent implements AfterViewInit{
       {
         label: 'Ver detalles',
         icon: 'pi pi-search',
-        command: () => this.verDetalle(idCarpeta)
+        command: () => this.verArchivos(idCarpeta)
       },
       /* Otras opciones */
     ];
@@ -198,33 +312,63 @@ export class BillingpaymentComponent implements AfterViewInit{
   crearDocumento() {
     const idEmpresa = '001';
   
-    // Sanitizar el número: convertir "001" -> 1 -> "1"
+    // Sanitizar el número (ej. 001 -> 1)
     const numeroSinCeros = parseInt(this.nuevoDocumento.numero, 10).toString();
   
-    // Concatenar para formar idCarpeta
+    // Crear idCarpeta (ej. RUC_SERIE-NUMERO)
     const idCarpeta = `${this.nuevoDocumento.ruc}_${this.nuevoDocumento.serie}-${numeroSinCeros}`;
   
-    this.apiService.crearDocumento(idEmpresa, idCarpeta).subscribe({
+    // Obtener periodo actual (ej. 202505)
+    const now = new Date();
+    const periodo = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+  
+    // Carpeta padre
+    const idCarpetaPadre: number = this.carpetaActual.idCarpeta!;
+  
+    // Verificar si ya existe
+    this.apiService.existeDocumento(idEmpresa, idCarpeta).subscribe({
       next: (res) => {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Documento creado correctamente'
-        });
-        this.mostrarCardCrear = false;
-        this.nuevoDocumento = { ruc: '', serie: '', numero: '' };
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          // Ya existe, no se crea
+          this.messageService.add({
+            severity: 'warn',
+            summary: 'Advertencia',
+            detail: 'Ya existe un documento con esta carpeta'
+          });
+        } else {
+          // No existe, se crea
+          this.apiService.crearDocumento(idEmpresa, idCarpeta, periodo, idCarpetaPadre).subscribe({
+            next: () => {
+              this.messageService.add({
+                severity: 'success',
+                summary: 'Éxito',
+                detail: 'Documento creado correctamente'
+              });
+              this.mostrarCardCrear = false;
+              this.nuevoDocumento = { ruc: '', serie: '', numero: '' };
+            },
+            error: (err) => {
+              console.error('Error al crear documento:', err);
+              this.messageService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'No se pudo crear el documento'
+              });
+            }
+          });
+        }
       },
       error: (err) => {
-        console.error('Error al crear documento:', err);
+        console.error('Error al verificar existencia del documento:', err);
         this.messageService.add({
           severity: 'error',
           summary: 'Error',
-          detail: 'No se pudo crear el documento'
+          detail: 'No se pudo verificar si el documento ya existe'
         });
       }
     });
-    this.filtrarPorFechas()
   }
+  
   
   cerrarCardCrear() {
     this.mostrarCardCrear = false;
@@ -244,37 +388,56 @@ export class BillingpaymentComponent implements AfterViewInit{
     this.estructuraCarpetas = [];
   }
   
-  filtrarPorFechas() {
-  if (!this.fechaInicio || !this.fechaFin) {
-    this.messageService.add({
-      severity: 'warn',
-      summary: 'Faltan datos',
-      detail: 'Por favor selecciona ambas fechas'
-    });
-    return;
-  }
-
-  const fechaInicioStr = this.fechaInicio.toISOString().split('T')[0];
-  const fechaFinStr = this.fechaFin.toISOString().split('T')[0];
-
-  this.apiService.filtrarDocumentos(fechaInicioStr, fechaFinStr).subscribe({
-    next: (data) => {
-      this.products = data.data; // ← Aquí guardas la respuesta para mostrarla en la tabla
-    },
-    error: (err) => {
-      console.error('Error al filtrar documentos:', err);
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se pudieron filtrar los documentos'
-      });
-    }
-  });
-}
   
   descargarExcel() {
-    console.log('Descargando Excel...');
+    const idCarpeta = this.route.snapshot.queryParamMap.get('idcarpeta') || '';
+  
+    forkJoin({
+      documentos: this.apiService.filtrarDocumentos(idCarpeta),
+      areas: this.apiService.opcionArea(),
+      tipoDet: this.apiService.opciontipoDet(),
+      tipoMov: this.apiService.opcionTipoMovimiento(),
+      clasificacion: this.apiService.opcionClasificacionLE()
+    }).subscribe(({ documentos, areas, tipoDet, tipoMov, clasificacion }) => {
+      const data = documentos.data.map((doc: any) => {
+        const areaDesc = areas.data.find((a: any) => a.idArea?.trim() === doc.idArea?.trim())?.descripcion || '';
+        const revDesc = this.rev.find(r => r.idRev === doc.revControl)?.descripcion || '';
+        const igvDesc = this.igv.find(i => i.idigv === String(doc.srIgv))?.descripcion || '';
+        const tipoDetDesc = tipoDet.data.find((t: any) => t.idTipoDet === doc.tipoDet)?.descripcion || '';
+        const obsDesc = this.obs.find(o => o.idObs === doc.onsContable)?.descripcion || '';
+        const regimenDesc = this.regimen.find(r => r.idRegimen === doc.regimen)?.descripcion || '';
+        const impDesc = this.impuestos.find(i => i.idImpuestos === String(doc.impuestos))?.descripcion || '';
+        const monedaDesc = this.moneda.find(m => m.idMoneda === doc.moneda?.trim())?.descripcion || '';
+        const tipoMovDesc = tipoMov.data.find((t: any) => t.idTipoMov === doc.tipoMovimiento)?.descripcion || '';
+        const clasDesc = clasificacion.data.find((c: any) => c.idClasificacionLE === doc.clasificacionLe?.trim())?.descripcion || '';
+  
+        const enlace = `${window.location.origin}/billingpayment?idCarpeta=${doc.idCarpetaPadre}&idDocumento=${doc.idCarpeta?.trim()}`;
+  
+        return {
+          ...doc,
+          idArea: areaDesc,
+          revControl: revDesc,
+          srIgv: igvDesc,
+          tipoDet: tipoDetDesc,
+          onsContable: obsDesc,
+          regimen: regimenDesc,
+          impuestos: impDesc,
+          moneda: monedaDesc,
+          tipoMovimiento: tipoMovDesc,
+          clasificacionLe: clasDesc,
+          enlace
+        };
+      });
+  
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = { Sheets: { 'Documentos': worksheet }, SheetNames: ['Documentos'] };
+      const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+      FileSaver.saveAs(blob, 'documentos.xlsx');
+    });
   }
+  
+  
 
   manejarArchivos(event: any) {
     const archivos: FileList = event.target.files;
@@ -373,17 +536,17 @@ export class BillingpaymentComponent implements AfterViewInit{
     });
   }
   
-  
-  
   subirCarpetas(): void {
     this.estructuraCarpeta.forEach(carpeta => {
       const idCarpeta = carpeta.nombre;
-  
+      const now = new Date();
+      const periodo = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+      const idCarpetaPadre: number = this.carpetaActual.idCarpeta!;
       this.apiService.existeDocumento(this.idEmpresa, idCarpeta).subscribe({
         next: (res) => {
           if (res.success === false) {
             // Crear carpeta si no existe
-            this.apiService.crearDocumento(this.idEmpresa, idCarpeta).subscribe({
+            this.apiService.crearDocumento(this.idEmpresa, idCarpeta, periodo, idCarpetaPadre).subscribe({
               next: () => {
                 // Subir todos los archivos
                 carpeta.files.forEach(file => {
@@ -444,22 +607,69 @@ export class BillingpaymentComponent implements AfterViewInit{
   }
 
   onVerClick(e: any): void {
-    this.verDetalle(e.data?.idCarpeta);
+    this.verArchivos(e.data?.idCarpeta);
   }  
 
-  verDetalle(idCarpeta: string) {
-    this.carpetaSeleccionada = idCarpeta;
-    this.apiService.listarArchivosCarpeta(idCarpeta.trim()).subscribe({
+  verDetalle(idCarpeta: any, idDocumento?: any) {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { idcarpeta: idCarpeta, iddocumento: idDocumento },
+      replaceUrl: true
+    });
+
+    const carpeta = this.carpetasRaiz.find(c => c.idCarpeta === idCarpeta);
+    this.carpetaActual = carpeta? carpeta: { idCarpetaPadre: null, final: false };
+  
+    if (!carpeta) {
+      this.carpetaActual.final = false;
+    }
+    console.log('detalle, ca, c')
+    console.log(this.carpetaActual)
+    console.log(carpeta)
+    if (this.carpetaActual.final === true) {
+      this.apiService.filtrarDocumentos(idCarpeta).subscribe({
+        next: (res) => {
+          this.products = res.data;
+          this.mostrarTablaCarpetas= true;
+        },
+        error: (err) => {
+          console.error('Error al filtrar documentos:', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'No se pudo filtrar documentos'
+          });
+        }
+      });
+    } else {
+      // Si no es final, usamos listarCarpeta
+      this.apiService.listarCarpeta(idCarpeta===null?'':idCarpeta).subscribe({
+        next: (res) => {
+          this.carpetasRaiz = res.data;
+          this.mostrarTablaCarpetas = false;
+        },
+        error: (err) => {
+          console.error('Error al listar carpeta:', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'No se pudo listar la carpeta'
+          });
+        }
+      });
+    }
+  }
+  
+
+  filtrarPorCarpeta(idCarpeta: string): void {
+    this.apiService.filtrarDocumentos(idCarpeta).subscribe({
       next: (response) => {
-        this.archivosCarpeta = Array.isArray(response) ? response : [response];
-        this.mostrarTablaArchivos = true;
+        this.archivosCarpeta = response;
       },
-      error: (err) => {
-        console.error('Error al obtener archivos:', err);
+      error: (error) => {
+        console.error('Error al filtrar documentos:', error);
       }
     });
-    this.mostrarTablaArchivos = true;
-
   }
 
   onEditarDocumento(e: any) {
@@ -499,10 +709,10 @@ export class BillingpaymentComponent implements AfterViewInit{
     this.mostrarTablaArchivos = false;
     this.archivosCarpeta = [];
     this.carpetaSeleccionada = '';
+    this.verDetalle(this.route.snapshot.queryParamMap.get('idcarpeta') || this.route.snapshot.queryParamMap.get('idCarpeta'))
   }
 
   abrirArchivo(e: any): void {
-    console.log(e)
     const url = e?.data?.url;
     if (url) {
       window.open(url, '_blank');
@@ -555,4 +765,45 @@ export class BillingpaymentComponent implements AfterViewInit{
     }
   }
   
+  verArchivos(idCarpeta: string, idDocumento?: string) {
+    const documento = this.products.find(c => c.idCarpeta === idCarpeta);
+    this.carpetaSeleccionada = idCarpeta;
+    const idDocFinal = idDocumento?.trim() || idCarpeta.trim();
+
+  
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { idCarpeta: documento.idCarpetaPadre, idDocumento: idDocFinal },
+      replaceUrl: true
+    });
+  
+    this.apiService.listarArchivosCarpeta(idDocFinal).subscribe({
+      next: (response) => {
+        this.archivosCarpeta = Array.isArray(response) ? response : [response];
+        this.mostrarTablaArchivos = true;
+      },
+      error: (err) => {
+        console.error('Error al obtener archivos:', err);
+      }
+    });
+    this.mostrarTablaArchivos = true;
+  }
+  
+
+  cerrarVistaCarpeta() {
+    const idCarpeta = this.route.snapshot.queryParamMap.get('idcarpeta') || this.route.snapshot.queryParamMap.get('idCarpeta');
+
+    if (idCarpeta) {
+      this.apiService.listarCarpeta(idCarpeta).subscribe((res) => {
+        if (
+          res.data.length === 1 &&
+          res.data[0].final === true &&
+          res.data[0].esOrigen === true
+        ) {
+          this.carpetasRaiz = res.data;
+          this.verDetalle(res.data[0].idCarpetaPadre);
+        }
+      });
+    }
+  }
 }

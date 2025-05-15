@@ -20,18 +20,13 @@ export class ApiService {
     return this.https.get(`${this.apiUrl}/AuthReport/IniciarSesion`, { params });
   }
 
-  filtrarDocumentos(fechaInicio: string, fechaFin: string): Observable<any> {
-    const params = new HttpParams()
-      .set('fechaInicio', fechaInicio)
-      .set('fechaFin', fechaFin);
-  
-    return this.https.get(`${this.apiUrl}/BillingPayment/filtrarDocumentos`, { params });
-  }
 
-  crearDocumento(idEmpresa: string, idCarpeta: string): Observable<any> {
+  crearDocumento(idEmpresa: string, idCarpeta: string, periodo: string, idCarpetaPadre:number): Observable<any> {
     const body = {
       idEmpresa,
-      idCarpeta
+      idCarpeta,
+      periodo,
+      idCarpetaPadre
     };
   
     return this.https.post(`${this.apiUrl}/BillingPayment/crearDocumento`, body);
@@ -41,7 +36,7 @@ export class ApiService {
     const params = new HttpParams()
       .set('Carpeta', Carpeta);
   
-    return this.https.get(`${this.apiUrl}/BillingPayment/listarArchivosCarpeta`, { params });
+    return this.https.get(`${this.apiUrl}/BillingPayment/listarArchivosDocumento`, { params });
   }
 
   
@@ -70,7 +65,7 @@ export class ApiService {
       .set('nombreArchivo', archivoNombreCompleto)
       .set('tipoArchivo', archivo.type);
   
-    return this.https.get<{ url: string }>(`${this.apiUrl}/BillingPayment/subirArchivoCarpeta`, { params }).pipe(
+    return this.https.get<{ url: string }>(`${this.apiUrl}/BillingPayment/subirArchivoDocumento`, { params }).pipe(
       switchMap(response => {
         const uploadUrl = response.url;
         return this.https.put(uploadUrl, archivo, {
@@ -118,4 +113,30 @@ export class ApiService {
     return this.https.post(`${this.apiUrl}/BillingPayment/editarDocumento`, body);
   }  
   
+  listarCarpeta(idCarpeta: string): Observable<any> {
+    const params = new HttpParams().set('idCarpeta', idCarpeta);
+    return this.https.get(`${this.apiUrl}/BillingPayment/listarCarpetas`, { params });
+  }
+
+  filtrarDocumentos(idCarpeta: string): Observable<any> {
+    const params = new HttpParams().set('idCarpeta', idCarpeta);
+    return this.https.get(`${this.apiUrl}/BillingPayment/filtrarDocumentos`, { params });
+  }
+
+  opcionArea(): Observable<any> {
+    return this.https.post(`${this.apiUrl}/BillingPayment/opcionArea`,{});
+  }
+
+  opciontipoDet(): Observable<any>{
+    return this.https.post(`${this.apiUrl}/BillingPayment/opciontipoDet`,{});
+  }
+
+  opcionTipoMovimiento(): Observable<any>{
+    return this.https.post(`${this.apiUrl}/BillingPayment/opcionTipoMovimiento`,{});
+  }
+
+  opcionClasificacionLE(): Observable<any>{
+    return this.https.post(`${this.apiUrl}/BillingPayment/opcionClasificacionLE`,{});
+  }
+
 }
