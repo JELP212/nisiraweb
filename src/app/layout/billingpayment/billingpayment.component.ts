@@ -795,6 +795,7 @@ export class BillingpaymentComponent implements AfterViewInit{
 
     if (idCarpeta) {
       this.apiService.listarCarpeta(idCarpeta).subscribe((res) => {
+        console.log(res)
         if (
           res.data.length === 1 &&
           res.data[0].final === true &&

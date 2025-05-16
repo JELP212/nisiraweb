@@ -86,11 +86,15 @@
         (onRowUpdating)="onEditarDocumento($event)"
         noDataText="No hay elementos, ajusta tus filtros"
       >
-      <dxo-paging [pageSize]="15"></dxo-paging>
+      <dxo-search-panel
+        [visible]="true"
+        [highlightCaseSensitive]="true"
+      ></dxo-search-panel>
+      <dxo-paging [pageSize]="100"></dxo-paging>
       <dxo-header-filter [visible]="true"></dxo-header-filter>
       <dxo-pager
         [visible]="true"
-        [allowedPageSizes]="[10, 15, 30, 50]"
+        [allowedPageSizes]="[100, 250, 500, 1000]"
         [displayMode]="'full'"
         [showPageSizeSelector]="true"
         [showInfo]="true"
@@ -99,7 +103,7 @@
       </dxo-pager>
 
         <dxo-editing
-          mode="row"
+          mode="cell"
           [allowUpdating]="true"
           [useIcons]="true"
         ></dxo-editing>
@@ -115,14 +119,22 @@
         <!-- Nombre con ícono tipo carpeta -->
         <dxi-column
           dataField="idCarpeta"
-          [allowFiltering]="false"
-          [allowSorting]="false"
+          [allowFiltering]="true"
+          [allowSorting]="true"
           cellTemplate="cellTemplate"
           caption="Nombre"
+          [allowEditing]="false"
           [width]="220"
-        ></dxi-column>
+        >
+        <dxo-header-filter [allowSelectAll]="false">
+          <dxo-search [enabled]="true"></dxo-search>
+        </dxo-header-filter>
+      </dxi-column>
         
         <div *dxTemplate="let data of 'cellTemplate'">
+          <dxo-header-filter [allowSelectAll]="false">
+            <dxo-search [enabled]="true"></dxo-search>
+          </dxo-header-filter>
           <a
             #contextAnchor
             (click)="verArchivos(data.value)"
