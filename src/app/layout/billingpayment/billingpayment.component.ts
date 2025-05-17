@@ -30,6 +30,8 @@ import { HttpParams } from '@angular/common/http';
 import { saveAs } from 'file-saver';
 import * as FileSaver from 'file-saver';
 import { forkJoin } from 'rxjs';
+import { DrawerModule } from 'primeng/drawer';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 interface Product {
   id?: string;
@@ -65,7 +67,7 @@ interface Carpeta {
     FileUpload,ToastModule,
     ContextMenuModule,
     DxDataGridModule,
-    DxButtonModule
+    DxButtonModule,DrawerModule,ProgressSpinnerModule
   ],
   providers: [MessageService],
   templateUrl: './billingpayment.component.html',
@@ -98,6 +100,8 @@ export class BillingpaymentComponent implements AfterViewInit{
   idEmpresa = '001';
 
   carpetasRaiz: any[] = [];
+  cargandoArchivos: boolean = false;
+
 
   carpetaActual = { idCarpetaPadre: null, final: false, idCarpeta: null };
   regimen = [
@@ -150,6 +154,10 @@ export class BillingpaymentComponent implements AfterViewInit{
   tipoDetSeleccionado: string = '';
   tipoMovimientoSeleccionado: string = '';
   clasificacionLESeleccionado: string = '';
+
+  mostrarVisor: boolean = false;
+  archivoSeleccionadoUrl: string = '';
+  archivoSeleccionadoNombre: string = '';
 
   constructor(private apiService: ApiService,private messageService: MessageService, private route: ActivatedRoute, // Para leer parámetros de ruta actuales
     private router: Router) {
@@ -707,9 +715,12 @@ export class BillingpaymentComponent implements AfterViewInit{
 
   cerrarVistaArchivos() {
     this.mostrarTablaArchivos = false;
+    this.cargandoArchivos = false; 
     this.archivosCarpeta = [];
     this.carpetaSeleccionada = '';
-    this.verDetalle(this.route.snapshot.queryParamMap.get('idcarpeta') || this.route.snapshot.queryParamMap.get('idCarpeta'))
+    if(this.products.length === 0){
+      this.verDetalle(this.route.snapshot.queryParamMap.get('idcarpeta') || this.route.snapshot.queryParamMap.get('idCarpeta'))
+    } 
   }
 
   abrirArchivo(e: any): void {
@@ -756,37 +767,45 @@ export class BillingpaymentComponent implements AfterViewInit{
   
       this.apiService.subirArchivoCarpeta(this.carpetaSeleccionada.trim().replace(/\s+/g, '_'), nombreSinExtension, tipo, archivo).subscribe({
         next: () => {
-          this.verDetalle(this.carpetaSeleccionada.trim().replace(/\s+/g, '_'));
+          this.verArchivos(this.carpetaSeleccionada.trim().replace(/\s+/g, '_'));
         },
         error: err => {
           console.error('Error al subir:', err);
         }
       });
+
     }
   }
   
-  verArchivos(idCarpeta: string, idDocumento?: string) {
+  verArchivos(idDocumento: string) {
+    const idCarpeta = this.route.snapshot.queryParamMap.get('idcarpeta') || this.route.snapshot.queryParamMap.get('idCarpeta');
     const documento = this.products.find(c => c.idCarpeta === idCarpeta);
-    this.carpetaSeleccionada = idCarpeta;
-    const idDocFinal = idDocumento?.trim() || idCarpeta.trim();
-
+    this.carpetaSeleccionada = idDocumento;
   
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { idCarpeta: documento.idCarpetaPadre, idDocumento: idDocFinal },
+      queryParams: { idCarpeta: idCarpeta, idDocumento: idDocumento },
       replaceUrl: true
     });
-  
-    this.apiService.listarArchivosCarpeta(idDocFinal).subscribe({
+
+    this.cargandoArchivos = true;
+    this.archivosCarpeta = []; // Limpiar archivos anteriores mientras se cargan los nuevos
+    this.mostrarTablaArchivos = true;
+
+    this.apiService.listarArchivosCarpeta(idDocumento.trim()).subscribe({
       next: (response) => {
+        console.log(response)
         this.archivosCarpeta = Array.isArray(response) ? response : [response];
+        this.cargandoArchivos = false;
         this.mostrarTablaArchivos = true;
+        
       },
       error: (err) => {
         console.error('Error al obtener archivos:', err);
+        this.cargandoArchivos = false;
       }
     });
-    this.mostrarTablaArchivos = true;
+    //this.mostrarTablaArchivos = true;
   }
   
 
@@ -807,4 +826,57 @@ export class BillingpaymentComponent implements AfterViewInit{
       });
     }
   }
+
+
+  verArchivo(url: string, name: string) {
+    this.archivoSeleccionadoUrl = url;
+    this.archivoSeleccionadoNombre = name;
+    this.mostrarVisor = true;
+  }
+
+  esImagen(url: string): boolean {
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+  }
+  
+  esPDF(url: string): boolean {
+    return /\.pdf$/i.test(url);
+  }
+  
+  esWord(url: string): boolean {
+    return /\.(doc|docx)$/i.test(url);
+  }
+
+  descargarArchivo() {
+    const esImagen = (url: string): boolean => {
+      return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(url);
+    };
+  
+    if (esImagen(this.archivoSeleccionadoUrl)) {
+      // CORS impide descarga directa, así que abrimos en nueva pestaña
+      window.open(this.archivoSeleccionadoUrl, '_blank');
+    } else {
+      // Para archivos no-imagen, usamos blob
+      fetch(this.archivoSeleccionadoUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error al descargar archivo');
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          const urlBlob = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = urlBlob;
+          link.download = this.archivoSeleccionadoNombre || 'archivo';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(urlBlob);
+        })
+        .catch(err => {
+          console.error('Error al descargar archivo:', err);
+        });
+    }
+  }
+  
 }

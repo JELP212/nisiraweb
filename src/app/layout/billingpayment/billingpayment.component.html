@@ -68,10 +68,10 @@
   <div class="mt-2 px-6" >
     <div class="max-w-8xl mx-auto">
       <p-button 
-      *ngIf="!mostrarTablaArchivos && mostrarTablaCarpetas"
+      *ngIf=" mostrarTablaCarpetas"
       label="Regresar" icon="pi pi-angle-left" variant="text" (click)="cerrarVistaCarpeta()"></p-button>
       <dx-data-grid
-        *ngIf="!mostrarTablaArchivos && mostrarTablaCarpetas"
+        *ngIf="mostrarTablaCarpetas"
         class="bg-white rounded-xl shadow-sm border border-gray-200"
         [dataSource]="products"
         keyExpr="idCarpeta"
@@ -120,7 +120,7 @@
         <dxi-column
           dataField="idCarpeta"
           [allowFiltering]="true"
-          [allowSorting]="true"
+          [allowSorting]="false"
           cellTemplate="cellTemplate"
           caption="Nombre"
           [allowEditing]="false"
@@ -315,60 +315,82 @@
         </dxi-column>
       </dx-data-grid>
 
-      <div *ngIf="mostrarTablaArchivos">
-        <p-button label="Regresar" icon="pi pi-angle-left" variant="text" (click)="cerrarVistaArchivos()"></p-button>
-      
-        <div
-          class="relative min-h-full"
-          (dragover)="onDragOver($event)"
-          (dragleave)="onDragLeave($event)"
-          (drop)="onFileDrop($event)"
-        >
-          <!-- ZONA DE DROP -->
-          <div
-            class="absolute top-0 left-0 right-0 bottom-0 z-10 bg-white bg-opacity-70 border-4 border-dashed border-sky-600 flex items-center justify-center text-sky-700 font-semibold text-sm transition-opacity duration-200 pointer-events-none"
-            [ngClass]="{ 'opacity-100': dropActive, 'opacity-0': !dropActive }"
-          >
-            Suelta los archivos aquí para subirlos
-          </div>
-        
-          <dx-data-grid
-            [dataSource]="archivosCarpeta"
-            [columnAutoWidth]="true"
-            [rowAlternationEnabled]="true"
-            [hoverStateEnabled]="true"
-            [showBorders]="false"
-            [showColumnLines]="false"
-            [showRowLines]="true"
-            class="rounded-xl shadow-sm border border-gray-200 text-sm font-sans"
-            (onRowDblClick)="abrirArchivo($event)"
-            noDataText="Aquí no hay archivos, arrastra uno aquí"
-          >
-            <dxi-column
-              dataField="name"
-              caption="Nombre"
-              cssClass="px-4 py-3 text-gray-800 font-medium"
-            ></dxi-column>
-          
-            <dxi-column
-              dataField="size"
-              caption="Tamaño"
-              [calculateCellValue]="formatSize"
-              cssClass="px-4 py-3 text-gray-700"
-            ></dxi-column>
-          
-            <dxi-column
-              dataField="lastModified"
-              caption="Última Modificación"
-              dataType="date"
-              cssClass="px-4 py-3 text-gray-600"
-            ></dxi-column>
+      <p-drawer [header]="carpetaSeleccionada ? 'Archivos en: ' + carpetaSeleccionada : 'Archivos'" 
+          [(visible)]="mostrarTablaArchivos"
+          (onHide)="cerrarVistaArchivos()"
+          position="right"
+          styleClass="!w-full md:!w-80 lg:!w-[30rem]">
 
-          </dx-data-grid>
+    <ng-template pTemplate="content">
+        <div class="relative h-full flex flex-col p-3"
+             (dragover)="onDragOver($event)"
+             (dragleave)="onDragLeave($event)"
+             (drop)="onFileDrop($event)">
+
+            <div class="absolute top-0 left-0 right-0 bottom-0 z-10 bg-white bg-opacity-80 border-4 border-dashed border-sky-600 flex items-center justify-center text-sky-700 font-semibold text-lg transition-opacity duration-200 pointer-events-none"
+                 [ngClass]="{ 'opacity-100': dropActive, 'opacity-0': !dropActive }">
+                <i class="pi pi-upload text-3xl mr-2"></i> Suelta los archivos aquí para subirlos
+            </div>
+
+            <div class="flex-grow flex flex-col">
+
+                <div *ngIf="cargandoArchivos" class="flex-grow flex items-center justify-center">
+                    <p-progressSpinner strokeWidth="4" animationDuration=".5s" styleClass="w-12 h-12"></p-progressSpinner>
+                    </div>
+
+                <div *ngIf="!cargandoArchivos" class="archivos-list overflow-y-auto flex-grow pt-2">
+                    <div *ngIf="archivosCarpeta && archivosCarpeta.length > 0; else noArchivosTemplateDrawer">
+                      <p-card *ngFor="let archivo of archivosCarpeta"
+                              styleClass="mb-1 shadow-md hover:shadow-lg transition-shadow duration-200" (click)="verArchivo(archivo.url, archivo.name)">
+                          <ng-template pTemplate="title">
+                              <div class="flex items-center">
+                                  <i class="pi pi-file mr-1 text-lg text-gray-600"></i> <span class="truncate text-base font-semibold" [title]="archivo.name">{{ archivo.name }}</span> </div>
+                          </ng-template>
+                          <ng-template pTemplate="content">
+                              <div class="flex justify-between text-sm text-gray-700 mt-1">
+                                  <span class="mr-2"> {{ formatSize(archivo) }}</span>
+                                  <span> {{ archivo.lastModified | date:'dd/MM/yyyy HH:mm' }}</span>
+                              </div>
+                          </ng-template>
+                      </p-card>
+                    </div>
+
+                    <ng-template #noArchivosTemplateDrawer>
+                        <div class="text-center py-10 text-gray-500" *ngIf="!dropActive">
+                            <i class="pi pi-inbox text-4xl mb-3"></i>
+                            <p class="font-semibold">Aquí no hay archivos.</p>
+                            <p class="text-sm">Arrastra y suelta archivos en esta área para subirlos.</p>
+                        </div>
+                    </ng-template>
+                </div>
+            </div>
         </div>
-        
-      
-      </div>
+    </ng-template>
+
+</p-drawer>
+
+<p-dialog header="Visor de archivo" [(visible)]="mostrarVisor" [modal]="true" [style]="{width: '80vw'}" [closable]="true" [resizable]="false">
+  <div class="flex justify-between items-center mb-4">
+    <h3 class="text-lg font-semibold">{{ archivoSeleccionadoNombre }}</h3>
+      <button pButton type="button" icon="pi pi-download" label="Descargar"
+        class="p-button-sm p-button-success"
+        (click)="descargarArchivo()"></button>
+
+  </div>
+
+  <ng-container *ngIf="archivoSeleccionadoUrl">
+    <img *ngIf="esImagen(archivoSeleccionadoUrl)" [src]="archivoSeleccionadoUrl" style="max-width: 100%; max-height: 70vh;" />
+
+    <iframe *ngIf="esPDF(archivoSeleccionadoUrl)" [src]="archivoSeleccionadoUrl" width="100%" height="500px"></iframe>
+
+    <iframe *ngIf="esWord(archivoSeleccionadoUrl)" [src]="'https://docs.google.com/gview?url=' + archivoSeleccionadoUrl + '&embedded=true'" width="100%" height="500px"></iframe>
+
+    <p *ngIf="!esImagen(archivoSeleccionadoUrl) && !esPDF(archivoSeleccionadoUrl) && !esWord(archivoSeleccionadoUrl)">
+      Tipo de archivo no soportado para vista previa.
+    </p>
+  </ng-container>
+</p-dialog>
+
   
     </div>
   </div>
