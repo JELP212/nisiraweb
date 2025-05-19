@@ -32,6 +32,7 @@ import * as FileSaver from 'file-saver';
 import { forkJoin } from 'rxjs';
 import { DrawerModule } from 'primeng/drawer';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { DomSanitizer } from '@angular/platform-browser';
 
 interface Product {
   id?: string;
@@ -159,8 +160,11 @@ export class BillingpaymentComponent implements AfterViewInit{
   archivoSeleccionadoUrl: string = '';
   archivoSeleccionadoNombre: string = '';
 
-  constructor(private apiService: ApiService,private messageService: MessageService, private route: ActivatedRoute, // Para leer parámetros de ruta actuales
-    private router: Router) {
+  constructor(private apiService: ApiService,
+              private messageService: MessageService, 
+              private route: ActivatedRoute,
+              private sanitizer: DomSanitizer,
+              private router: Router) {
 
     }
 
@@ -197,6 +201,7 @@ export class BillingpaymentComponent implements AfterViewInit{
       if (idCarpeta && idDocumento) {
         this.mostrarTablaArchivos = true;
         this.mostrarTablaCarpetas = true;
+        this.carpetaSeleccionada = idDocumento;
         this.apiService.listarArchivosCarpeta(idDocumento.trim()).subscribe({
           next: (response) => {
             this.archivosCarpeta = Array.isArray(response) ? response : [response];
@@ -839,6 +844,10 @@ export class BillingpaymentComponent implements AfterViewInit{
   }
   
   esPDF(url: string): boolean {
+    console.log('-------PDF-------')
+    console.log(url)
+    console.log(/\.pdf$/i.test(url))
+    console.log('------------------')
     return /\.pdf$/i.test(url);
   }
   
@@ -846,6 +855,14 @@ export class BillingpaymentComponent implements AfterViewInit{
     return /\.(doc|docx)$/i.test(url);
   }
 
+  getSafeUrl(url: string) {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+
+  encodeURI(url: string): string {
+    return encodeURIComponent(url);
+  }
+  
   descargarArchivo() {
     const esImagen = (url: string): boolean => {
       return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(url);

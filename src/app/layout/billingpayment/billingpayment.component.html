@@ -12,7 +12,7 @@
       </div>
     </div>
     
-    <div class="flex justify-between mt-0 items-end" *ngIf="!mostrarTablaArchivos">
+    <div class="flex justify-between mt-0 items-end" *ngIf="mostrarTablaCarpetas">
 
       <div class="flex gap-2">
         <button (click)="descargarExcel()" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-file-excel text-sm"></i>Excel</button>
@@ -315,57 +315,75 @@
         </dxi-column>
       </dx-data-grid>
 
-      <p-drawer [header]="carpetaSeleccionada ? 'Archivos en: ' + carpetaSeleccionada : 'Archivos'" 
+      <p-drawer
           [(visible)]="mostrarTablaArchivos"
           (onHide)="cerrarVistaArchivos()"
           position="right"
           styleClass="!w-full md:!w-80 lg:!w-[30rem]">
-
-    <ng-template pTemplate="content">
-        <div class="relative h-full flex flex-col p-3"
-             (dragover)="onDragOver($event)"
-             (dragleave)="onDragLeave($event)"
-             (drop)="onFileDrop($event)">
-
-            <div class="absolute top-0 left-0 right-0 bottom-0 z-10 bg-white bg-opacity-80 border-4 border-dashed border-sky-600 flex items-center justify-center text-sky-700 font-semibold text-lg transition-opacity duration-200 pointer-events-none"
-                 [ngClass]="{ 'opacity-100': dropActive, 'opacity-0': !dropActive }">
-                <i class="pi pi-upload text-3xl mr-2"></i> Suelta los archivos aquí para subirlos
-            </div>
-
-            <div class="flex-grow flex flex-col">
-
-                <div *ngIf="cargandoArchivos" class="flex-grow flex items-center justify-center">
-                    <p-progressSpinner strokeWidth="4" animationDuration=".5s" styleClass="w-12 h-12"></p-progressSpinner>
-                    </div>
-
-                <div *ngIf="!cargandoArchivos" class="archivos-list overflow-y-auto flex-grow pt-2">
-                    <div *ngIf="archivosCarpeta && archivosCarpeta.length > 0; else noArchivosTemplateDrawer">
-                      <p-card *ngFor="let archivo of archivosCarpeta"
-                              styleClass="mb-1 shadow-md hover:shadow-lg transition-shadow duration-200" (click)="verArchivo(archivo.url, archivo.name)">
-                          <ng-template pTemplate="title">
-                              <div class="flex items-center">
-                                  <i class="pi pi-file mr-1 text-lg text-gray-600"></i> <span class="truncate text-base font-semibold" [title]="archivo.name">{{ archivo.name }}</span> </div>
-                          </ng-template>
-                          <ng-template pTemplate="content">
-                              <div class="flex justify-between text-sm text-gray-700 mt-1">
-                                  <span class="mr-2"> {{ formatSize(archivo) }}</span>
-                                  <span> {{ archivo.lastModified | date:'dd/MM/yyyy HH:mm' }}</span>
-                              </div>
-                          </ng-template>
-                      </p-card>
-                    </div>
-
-                    <ng-template #noArchivosTemplateDrawer>
-                        <div class="text-center py-10 text-gray-500" *ngIf="!dropActive">
-                            <i class="pi pi-inbox text-4xl mb-3"></i>
-                            <p class="font-semibold">Aquí no hay archivos.</p>
-                            <p class="text-sm">Arrastra y suelta archivos en esta área para subirlos.</p>
-                        </div>
+          <ng-template pTemplate="header">
+            <div class="flex items-center p-3">
+                <i class="pi pi-folder-open mr-3 text-2xl text-amber-500"></i>
+                <h2 class="text-xl font-semibold">
+                    <ng-container *ngIf="carpetaSeleccionada; else soloArchivosTitulo">
+                        <span class="text-slate-700">Archivos en: </span>
+                        <span class="font-bold text-sky-600">{{ carpetaSeleccionada }}</span>
+                    </ng-container>
+                    <ng-template #soloArchivosTitulo>
+                        <span class="text-slate-700">Archivos</span>
                     </ng-template>
+                </h2>
+            </div>
+        </ng-template>
+
+        <ng-template pTemplate="content">
+            <div class="relative h-full flex flex-col p-3"
+                (dragover)="onDragOver($event)"
+                (dragleave)="onDragLeave($event)"
+                (drop)="onFileDrop($event)">
+
+                <div class="absolute top-0 left-0 right-0 bottom-0 z-10 bg-white bg-opacity-80 border-4 border-dashed border-sky-600 flex items-center justify-center text-sky-700 font-semibold text-lg transition-opacity duration-200 pointer-events-none"
+                    [ngClass]="{ 'opacity-100': dropActive, 'opacity-0': !dropActive }">
+                    <i class="pi pi-upload text-3xl mr-2"></i> Suelta los archivos aquí para subirlos
+                </div>
+
+                <div class="flex-grow flex flex-col">
+
+                    <div *ngIf="cargandoArchivos" class="flex-grow flex items-center justify-center">
+                        <p-progressSpinner strokeWidth="4" animationDuration=".5s" styleClass="w-12 h-12"></p-progressSpinner>
+                        </div>
+
+                    <div *ngIf="!cargandoArchivos" class="archivos-list overflow-y-auto flex-grow pt-1">
+                      <div *ngIf="archivosCarpeta && archivosCarpeta.length > 0; else noArchivosTemplateDrawer">
+                        <p-card *ngFor="let archivo of archivosCarpeta"
+                                styleClass="mb-0 shadow-md hover:shadow-lg transition-shadow duration-200 cursor-pointer" 
+                                (click)="verArchivo(archivo.url, archivo.name)">
+                            <ng-template pTemplate="title">
+                                <div class="flex items-center pt-1 pb-0">
+                                    <i class="pi pi-file mr-1.5 text-base text-sky-600"></i>
+                                    <span class="truncate text-sm font-medium text-slate-700" [title]="archivo.name">{{ archivo.name }}</span>
+                                </div>
+                            </ng-template>
+                            <ng-template pTemplate="content">
+                                <div class="flex justify-between items-center text-xs text-slate-500 pt-0.5 pb-1">
+                                    <span class="mr-2 whitespace-nowrap">{{ formatSize(archivo) }}</span>
+                                    <span class="whitespace-nowrap">{{ archivo.lastModified | date:'dd/MM/yy HH:mm' }}</span>
+                                </div>
+                            </ng-template>
+                        </p-card>
+                    </div>
+                    
+
+                        <ng-template #noArchivosTemplateDrawer>
+                            <div class="text-center py-10 text-gray-500" *ngIf="!dropActive">
+                                <i class="pi pi-inbox text-4xl mb-3"></i>
+                                <p class="font-semibold">Aquí no hay archivos.</p>
+                                <p class="text-sm">Arrastra y suelta archivos en esta área para subirlos.</p>
+                            </div>
+                        </ng-template>
+                    </div>
                 </div>
             </div>
-        </div>
-    </ng-template>
+        </ng-template>
 
 </p-drawer>
 
@@ -381,7 +399,10 @@
   <ng-container *ngIf="archivoSeleccionadoUrl">
     <img *ngIf="esImagen(archivoSeleccionadoUrl)" [src]="archivoSeleccionadoUrl" style="max-width: 100%; max-height: 70vh;" />
 
-    <iframe *ngIf="esPDF(archivoSeleccionadoUrl)" [src]="archivoSeleccionadoUrl" width="100%" height="500px"></iframe>
+    <iframe *ngIf="esPDF(archivoSeleccionadoUrl)" 
+        [src]="getSafeUrl(archivoSeleccionadoUrl)" 
+        width="100%" height="500px">
+    </iframe>
 
     <iframe *ngIf="esWord(archivoSeleccionadoUrl)" [src]="'https://docs.google.com/gview?url=' + archivoSeleccionadoUrl + '&embedded=true'" width="100%" height="500px"></iframe>
 
