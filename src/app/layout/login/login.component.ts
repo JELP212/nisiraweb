@@ -25,9 +25,11 @@ export class LoginComponent {
         if (res.success) {
           const id = res.data.id;
           const token = res.data.token;
+          const usuario = res.data.usuario;
           
           this.cookieService.set('usuarioId', id.toString());
           this.cookieService.set('token', token);
+          this.cookieService.set('usuario',usuario)
           
           this.router.navigate(['/home']);
         } else {

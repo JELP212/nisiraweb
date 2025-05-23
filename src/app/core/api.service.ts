@@ -139,4 +139,78 @@ export class ApiService {
     return this.https.post(`${this.apiUrl}/BillingPayment/opcionClasificacionLE`,{});
   }
 
+  listarDocumentosPendientes(idEmpresa: string, ruc: string, idDocumento:string): Observable<any> {
+    const params = new HttpParams()
+      .set('idEmpresa', idEmpresa)
+      .set('ruc', ruc)
+      .set('idDocumento', idDocumento)
+  
+    return this.https.get(`${this.apiUrl}/BillingPayment/listarDocumentosPendientes`, { params });
+  }
+
+  detalleDocumentosPendientes(idEmpresa: string, ruc: string, idDocumento:string, serie: string, numero:string): Observable<any> {
+    const params = new HttpParams()
+      .set('idEmpresa', idEmpresa)
+      .set('ruc', ruc)
+      .set('idDocumento', idDocumento)
+      .set('serie', serie)
+      .set('numero', numero)
+  
+    return this.https.get(`${this.apiUrl}/BillingPayment/detalleDocumentosPendientes`, { params });
+  }
+
+  generarIdCobrarPagarDoc(idEmpresa: string, idCarpeta:string): Observable<any> {
+    const params = new HttpParams()
+      .set('idEmpresa', idEmpresa)
+      .set('idCarpeta', idCarpeta)
+  
+    return this.https.get(`${this.apiUrl}/BillingPayment/generarIdCobrarPagarDoc`, { params });
+  }
+
+  grabarCobrarPagarDoc(body: {
+    lcEmpresa: string;
+    lcId: string;
+    idCarpeta: string;
+    xmlData: string;
+    xmlDeta: string;
+    xmlImp: string;
+    xmlRef: string;
+    c_xml_da: string;
+
+  }): Observable<any> {
+    return this.https.post(`${this.apiUrl}/BillingPayment/grabarCobrarPagarDoc`, body);
+  }  
+
+  ConsultarRefGuia(idDocumento: string, serie:string, numero:string): Observable<any> {
+    const params = new HttpParams()
+      .set('idDocumento', idDocumento)
+      .set('serie', serie)
+      .set('numero', numero)
+  
+    return this.https.get(`${this.apiUrl}/BillingPayment/ConsultarRefGuia`, { params });
+  }
+
+  crearCarpeta(body: {
+    nombreCarpeta: string;
+    idCarpetaPadre: number;
+    carpetaRaiz: boolean;
+    usuarioCreador: string;
+    final: boolean;
+  }): Observable<any> {
+    return this.https.post(`${this.apiUrl}/BillingPayment/crearCarpeta`, body);
+  } 
+
+
+  eliminarDocumento(idEmpresa: string, idCarpeta:string): Observable<any> {
+  
+    return this.https.post(`${this.apiUrl}/BillingPayment/eliminarDocumento?idEmpresa=${idEmpresa}&idCarpeta=${idCarpeta}`, null);
+  }
+
+  eliminarArchivoDocumento(carpeta: string, nombreArchivo:string): Observable<any> {
+    const params = new HttpParams()
+      .set('carpeta', carpeta)
+      .set('nombreArchivo', nombreArchivo)
+  
+    return this.https.delete(`${this.apiUrl}/BillingPayment/eliminarArchivoDocumento`, { params });
+  }
 }

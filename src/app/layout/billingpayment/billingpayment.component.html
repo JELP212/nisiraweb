@@ -1,5 +1,6 @@
 <!-- REPORTES -->
 <p-toast></p-toast>
+<p-confirmDialog></p-confirmDialog>
 <div class="min-h-screen bg-gray-100">
   <app-topbar></app-topbar>
 
@@ -7,8 +8,9 @@
     <div class="flex justify-between items-center mt-1">
       <app-title [title]="'Documentos a pagar'" [subtitle]="'Sube o revisa documentos a pagar'"></app-title>
       <div class="flex gap-2">
-        <button (click)="mostrarCardCrear = true" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-plus text-sm"></i>Crear</button>
-        <button (click)="mostrarCardSubir = true" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-upload text-sm"></i>Subir en masa</button>
+        <button *ngIf="!mostrarTablaCarpetas" (click)="mostrarCardCrearCarpeta = true" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-plus text-sm"></i>Crear Carpeta</button>
+        <button *ngIf="mostrarTablaCarpetas" (click)="mostrarCardCrear = true" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-plus text-sm"></i>Crear</button>
+        <button *ngIf="mostrarTablaCarpetas" (click)="mostrarCardSubir = true" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i class="pi pi-upload text-sm"></i>Subir en masa</button>
       </div>
     </div>
     
@@ -24,6 +26,7 @@
   <!-- Tabla de carpetas raíz -->
   <div class="mt-6 px-6">
     <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
+
       <div class="p-4" *ngIf="!mostrarTablaCarpetas">
         <p-button 
           label="Regresar" 
@@ -32,8 +35,10 @@
           (click)="verDetalle(carpetaActual.idCarpetaPadre)"
         ></p-button>
       </div>
+      <p-progressSpinner *ngIf="cargando" styleClass="w-12 h-12 block mx-auto my-6" strokeWidth="4"></p-progressSpinner>
+      <p-progressSpinner *ngIf="cargandoc" styleClass="w-12 h-12 block mx-auto my-6" strokeWidth="4"></p-progressSpinner>
       <table class="min-w-full divide-y divide-gray-200 text-sm text-left text-gray-800"
-      *ngIf="!mostrarTablaCarpetas">
+      *ngIf="!mostrarTablaCarpetas  && !cargandoc ">
         <thead class="bg-gray-50 text-xs font-semibold text-gray-600 tracking-wider">
           <tr>
             <th class="px-6 py-3">Nombre</th>
@@ -68,10 +73,10 @@
   <div class="mt-2 px-6" >
     <div class="max-w-8xl mx-auto">
       <p-button 
-      *ngIf=" mostrarTablaCarpetas"
+      *ngIf=" mostrarTablaCarpetas "
       label="Regresar" icon="pi pi-angle-left" variant="text" (click)="cerrarVistaCarpeta()"></p-button>
       <dx-data-grid
-        *ngIf="mostrarTablaCarpetas"
+        *ngIf="mostrarTablaCarpetas && !cargando"
         class="bg-white rounded-xl shadow-sm border border-gray-200"
         [dataSource]="products"
         keyExpr="idCarpeta"
@@ -158,7 +163,7 @@
         </div>
 
         <!-- Resto de columnas -->
-        <dxi-column dataField="idCobrarPagoDoc" caption="CobrarPagarDoc">
+        <dxi-column dataField="idCobrarPagarDoc" caption="CobrarPagarDoc">
           <dxo-header-filter [allowSelectAll]="false">
             <dxo-search [enabled]="true"></dxo-search>
           </dxo-header-filter>
@@ -250,7 +255,7 @@
             <dxo-search [enabled]="true"></dxo-search>
           </dxo-header-filter>
         </dxi-column>
-        <dxi-column dataField="impuestos" caption="Impuestos" dataType="number">
+        <dxi-column dataField="impuestos" caption="Impuestos">
           <dxo-header-filter [allowSelectAll]="false">
             <dxo-search [enabled]="true"></dxo-search>
           </dxo-header-filter>
@@ -357,10 +362,18 @@
                         <p-card *ngFor="let archivo of archivosCarpeta"
                                 styleClass="mb-0 shadow-md hover:shadow-lg transition-shadow duration-200 cursor-pointer" 
                                 (click)="verArchivo(archivo.url, archivo.name)">
+
                             <ng-template pTemplate="title">
                                 <div class="flex items-center pt-1 pb-0">
                                     <i class="pi pi-file mr-1.5 text-base text-sky-600"></i>
+
                                     <span class="truncate text-sm font-medium text-slate-700" [title]="archivo.name">{{ archivo.name }}</span>
+                                    <button 
+                                    type="button"
+                                    class="align-end end text-red-600 hover:text-red-800 text-xs bg-white rounded-full shadow"
+                                    (click)="eliminarArchivo($event, idCarpeta, archivo.name)">
+                                    <i class="pi pi-trash"></i>
+                                  </button>
                                 </div>
                             </ng-template>
                             <ng-template pTemplate="content">
@@ -387,22 +400,28 @@
 
 </p-drawer>
 
-<p-dialog header="Visor de archivo" [(visible)]="mostrarVisor" [modal]="true" [style]="{width: '80vw'}" [closable]="true" [resizable]="false">
-  <div class="flex justify-between items-center mb-4">
-    <h3 class="text-lg font-semibold">{{ archivoSeleccionadoNombre }}</h3>
-      <button pButton type="button" icon="pi pi-download" label="Descargar"
-        class="p-button-sm p-button-success"
-        (click)="descargarArchivo()"></button>
+<p-dialog [(visible)]="mostrarVisor" [modal]="true" [style]="{width: '80vw'}" 
+  [closable]="false" [resizable]="false">
 
-  </div>
+  <ng-template pTemplate="header">
+    <div class="flex justify-between items-center w-full">
+      <span>{{ archivoSeleccionadoNombre }}</span>
+      <div class="flex items-center gap-2">
+        <button pButton type="button" icon="pi pi-download" label="Descargar" 
+          class="p-button-sm p-button-success" 
+          (click)="descargarArchivo()"></button>
+
+        <button type="button" class="p-dialog-header-icon p-link" (click)="mostrarVisor = false" aria-label="Cerrar">
+          <span class="pi pi-times"></span>
+        </button>
+      </div>
+    </div>
+  </ng-template>
 
   <ng-container *ngIf="archivoSeleccionadoUrl">
-    <img *ngIf="esImagen(archivoSeleccionadoUrl)" [src]="archivoSeleccionadoUrl" style="max-width: 100%; max-height: 70vh;" />
+    <img *ngIf="esImagen(archivoSeleccionadoUrl)" [src]="safeUrl" style="max-width: 100%; max-height: 70vh;" />
 
-    <iframe *ngIf="esPDF(archivoSeleccionadoUrl)" 
-        [src]="getSafeUrl(archivoSeleccionadoUrl)" 
-        width="100%" height="500px">
-    </iframe>
+    <iframe *ngIf="esPDF(archivoSeleccionadoUrl)" [src]="safeUrl" width="100%" height="470px"></iframe>
 
     <iframe *ngIf="esWord(archivoSeleccionadoUrl)" [src]="'https://docs.google.com/gview?url=' + archivoSeleccionadoUrl + '&embedded=true'" width="100%" height="500px"></iframe>
 
@@ -411,6 +430,7 @@
     </p>
   </ng-container>
 </p-dialog>
+
 
   
     </div>
@@ -450,6 +470,51 @@
   </div>
 </p-dialog>
 
+
+<p-dialog 
+  header="Crear carpeta" 
+  [(visible)]="mostrarCardCrearCarpeta" 
+  [modal]="true" 
+  [style]="{width: '450px'}"
+>
+  <div class="flex flex-col gap-3 mt-1">
+
+    <!-- Nombre -->
+    <div class="flex flex-col">
+      <label class="text-sm font-medium mb-1">Nombre de Carpeta</label>
+      <input pInputText [(ngModel)]="nombreCarpeta" class="w-full" />
+    </div>
+
+    <!-- Campo Final con checkbox y ayuda -->
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <p-checkbox [(ngModel)]="final" binary="true"></p-checkbox>
+        <label class="text-sm">Final</label>
+      </div>
+      <button 
+        pButton 
+        type="button" 
+        icon="pi pi-question-circle" 
+        class="p-button-text text-sky-700 text-sm"
+        (click)="mostrarAyudaFinal = !mostrarAyudaFinal" 
+        title="¿Qué significa 'Final'?"
+      ></button>
+    </div>
+    <div *ngIf="mostrarAyudaFinal" class="mt-1 text-xs text-gray-600">
+      Marcar como <strong>Final</strong> significa que ya no se podrán editar los archivos ni modificar la carpeta.
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-2 mt-3">
+      <button pButton label="Cancelar" (click)="mostrarCardCrearCarpeta = false" class="p-button-secondary"></button>
+      <button pButton label="Guardar" (click)="crearCarpeta()" class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm"></button>
+    </div>
+
+  </div>
+</p-dialog>
+
+
+
 <p-dialog header="Subir carpetas" [(visible)]="mostrarCardSubir" [modal]="true" [style]="{width: '600px'}">
   <div class="text-gray-700 text-sm mb-4">
     Arrastra carpetas o selecciónalas desde tu equipo
@@ -480,3 +545,209 @@
   </div>
 
 </p-dialog>
+
+
+
+
+
+<p-dialog [header]="tituloDialogAprovisionar" [(visible)]="mostrarDialogAprovisionar" [modal]="true" [style]="{width: '80vw', height: '80vh'}" [closable]="true" [resizable]="false" (onHide)="cerrarDialogo()">
+  <!-- Contenedor principal con distribución horizontal -->
+  <div class="flex gap-4 mb-4 items-start">
+    
+    <!-- Columna izquierda con botones -->
+    <div class="flex flex-col gap-2">
+      <button pButton type="button" label="+ Guía de remisión" class="p-button-outlined p-button-secondary w-48" (click)="abrirDialogo('GRP')"></button>
+      <button pButton type="button" label="+ Orden de compra" class="p-button-outlined p-button-secondary w-48" (click)="abrirDialogo('OCO')"></button>
+      <button pButton type="button" label="+ Orden de servicio" class="p-button-outlined p-button-secondary w-48" (click)="abrirDialogo('OSR')"></button>
+    </div>
+
+    <!-- Columna derecha con el Card -->
+    <p-card header="Documentos seleccionados" styleClass="w-full md:w-100">
+      <ng-template pTemplate="content">
+        <div *ngIf="documentosConfirmados.length">
+          <ul>
+            <li *ngFor="let doc of documentosConfirmados">
+              <strong>Tipo:</strong> {{ tipoSeleccionado }} |
+              <strong>Serie:</strong> {{ doc.serie }} |
+              <strong>Número:</strong> {{ doc.numero }} |
+              <strong>Fecha:</strong> {{ doc.fecha }}
+            </li>
+          </ul>
+        </div>
+        <div *ngIf="!documentosConfirmados.length">
+          <em>No hay documentos seleccionados.</em>
+        </div>
+      </ng-template>
+    </p-card>
+    
+
+  </div>
+
+  <!-- Tabla -->
+  <dx-data-grid
+    [dataSource]="productosSeleccionados"
+    class="bg-white rounded-xl shadow-sm border border-gray-200 w-full h-full"
+    [selection]="{ mode: 'single' }"
+    [showBorders]="false"
+    [rowAlternationEnabled]="true"
+    [columnAutoWidth]="true"
+    [hoverStateEnabled]="true"
+    [showColumnLines]="false"
+    [showRowLines]="true"
+    (onRowUpdating)="editar($event)"
+    noDataText="No hay elementos"
+  >
+    <dxo-paging [pageSize]="10"></dxo-paging>
+    <dxo-pager
+      [visible]="true"
+      [allowedPageSizes]="[10, 20, 30, 50]"
+      [displayMode]="'full'"
+      [showPageSizeSelector]="true"
+      [showInfo]="true"
+      [showNavigationButtons]="true"
+    ></dxo-pager>
+    <dxo-editing mode="cell" [allowUpdating]="true" [useIcons]="true"></dxo-editing>
+    <dxo-selection mode="single"></dxo-selection>
+
+    <!-- Aquí van tus columnas -->
+    <dxi-column dataField="item" caption="Item"></dxi-column>
+    <dxi-column dataField="cuenta" caption="Cuenta"></dxi-column>
+    <dxi-column dataField="observaciones"caption="Glosa"></dxi-column>
+    <dxi-column dataField="costos" caption="Centro de costos"></dxi-column>
+    <dxi-column dataField="descripcioncc" caption="Descripción centro de costos."></dxi-column>
+    <dxi-column dataField="destino" caption="Destino"></dxi-column>
+    <dxi-column dataField="importe" caption="Importe"></dxi-column>
+    <dxi-column dataField="descripcionp" caption="Descripción producto"></dxi-column>
+    <dxi-column dataField="cantidad" caption="Cantidad"></dxi-column>
+    <dxi-column dataField="producto" caption="Producto"></dxi-column>
+    <!-- Botones de edición -->
+    <dxi-column type="buttons" [width]="60">
+      <dxi-button name="edit" icon="edit"></dxi-button>
+      <dxi-button name="save" icon="save"></dxi-button>
+      <dxi-button name="cancel" icon="revert"></dxi-button>
+    </dxi-column>
+  </dx-data-grid>
+  <div class="flex justify-end mt-5 mb-4">
+    <p-button 
+    label="Generar" 
+    icon="pi pi-file" 
+    class="p-button-primary"
+    [disabled]="generarDeshabilitado"
+    (onClick)="generar()">
+  </p-button>
+  </div>
+</p-dialog>
+
+
+<p-dialog header="{{ tituloDialogo }}" [(visible)]="dialogoVisible" [modal]="true" [style]="{ width: '80vw', height: '80vh'}" (onHide)="cerrarDialogos()">
+  <!-- Primera tabla vacía -->
+  <p-table 
+  [value]="documentosPendientes" 
+  [(selection)]="seleccionadosTabla1" 
+  dataKey="id" 
+  [responsiveLayout]="'scroll'" 
+  (selectionChange)="onSeleccionarFila($event)"
+  class="mb-4"
+>
+  <ng-template pTemplate="header">
+    <tr>
+      <th style="width: 3em"><!-- Opcional: eliminar si no deseas seleccionar todos -->
+        <!-- <p-tableHeaderCheckbox></p-tableHeaderCheckbox> -->
+      </th>
+      <th>Tipo documento</th>
+      <th>Serie</th>
+      <th>Número</th>
+      <th>Fecha</th>
+      <th>Razón social</th>
+      <th>Documento de origen</th>
+    </tr>
+  </ng-template>
+
+  <ng-template pTemplate="body" let-rowData>
+    <tr 
+      (click)="toggleFila(rowData)" 
+      [class.selected]="filaSeleccionada(rowData)"
+      style="cursor: pointer;"
+    >
+      <td>
+        <input 
+          type="checkbox" 
+          [checked]="filaSeleccionada(rowData)" 
+          (click)="$event.stopPropagation(); toggleFila(rowData)" 
+        />
+      </td>
+      <td>{{ tipoSeleccionado }}</td>
+      <td>{{ rowData.serie }}</td>
+      <td>{{ rowData.numero }}</td>
+      <td>{{ rowData.fecha }}</td>
+      <td>{{ rowData.nombre }}</td>
+      <td></td>
+    </tr>
+  </ng-template>
+
+  <ng-template pTemplate="emptymessage">
+    <tr>
+      <td colspan="7" class="text-center">No hay datos en la primera tabla</td>
+    </tr>
+  </ng-template>
+</p-table>
+
+
+<p-table 
+[value]="detallesTabla2" 
+dataKey="id" 
+[responsiveLayout]="'scroll'"
+class="mb-4"
+>
+<ng-template pTemplate="header">
+  <tr>
+    <th style="width: 3em"></th>
+    <th>Item</th>
+    <th>Producto</th>
+    <th>Descripción</th>
+    <th>UM</th>
+    <th>Cantidad solicitada</th>
+    <th>Cantidad por atender</th>
+  </tr>
+</ng-template>
+
+<ng-template pTemplate="body" let-rowData>
+  <tr 
+    (click)="toggleFila2(rowData)" 
+    [class.selected]="filaSeleccionada2(rowData)"
+    style="cursor: pointer;"
+  >
+    <td>
+      <input 
+        type="checkbox" 
+        [checked]="filaSeleccionada2(rowData)" 
+        (click)="$event.stopPropagation(); toggleFila2(rowData)" 
+      />
+    </td>
+    <td>{{ rowData.item }}</td>
+    <td>{{ rowData.idProducto }}</td>
+    <td>{{ rowData.descripcion }}</td>
+    <td>{{ rowData.idMedida }}</td>
+    <td>{{ rowData.Cantidad }}</td>
+    <td>{{ rowData.cantidad }}</td>
+  </tr>
+</ng-template>
+
+<ng-template pTemplate="emptymessage">
+  <tr>
+    <td colspan="7" class="text-center">No hay datos en la segunda tabla</td>
+  </tr>
+</ng-template>
+</p-table>
+
+<p-button
+  label="Mostrar productos seleccionados"
+  icon="pi pi-check"
+  (onClick)="mostrarDatosEnGrid()"
+  styleClass="p-button-sm p-button-primary"
+/>
+
+
+
+</p-dialog>
+
