@@ -138,13 +138,15 @@ export class BillingpaymentComponent implements AfterViewInit{
     { idObs: '01', descripcion: 'APL.NRC' },
     { idObs: '02', descripcion: 'PEND SUSTENTO' },
     { idObs: '03', descripcion: 'PUB.ASUM' },
-    { idObs: '04', descripcion: 'PUB.REFAC' }
+    { idObs: '04', descripcion: 'PUB.REFAC' },
+    { idObs: '05', descripcion: 'PUB.GAR' }
   ];
   obsSeleccionado: string = '';
 
   rev = [
     { idRev: '01', descripcion: 'CONFORME' },
-    { idRev: '02', descripcion: 'PEND FAC' }
+    { idRev: '02', descripcion: 'PEND FAC' },
+    { idRev: '02', descripcion: 'OBSERVADO' }
   ];
   revSeleccionado: string = '';
 
@@ -369,6 +371,17 @@ export class BillingpaymentComponent implements AfterViewInit{
         label: 'Eliminar',
         icon: 'pi pi-eraser',
         command: () => {
+          const documento = this.products.find(p => p.idCarpeta === idCarpeta);
+      
+          if (documento?.idCobrarPagarDoc) {
+            this.messageService.add({
+              severity: 'warn',
+              summary: 'No se puede eliminar',
+              detail: 'Este documento está vinculado a Cobrar/Pagar y no puede eliminarse.'
+            });
+            return;
+          }
+      
           this.confirmationService.confirm({
             message: '¿Estás segura de que deseas eliminar este documento?',
             header: 'Confirmar eliminación',
@@ -399,7 +412,71 @@ export class BillingpaymentComponent implements AfterViewInit{
             }
           });
         }
-      }
+      },
+      {
+        label: 'Aprobar',
+        icon: 'pi pi-check',
+        command: () => {
+          // Suponiendo que tienes el idCarpeta del documento a aprobar (ejemplo: this.selectedIdCarpeta)
+          const documento = this.products.find(p => p.idCarpeta === idCarpeta);
+      
+          if (!documento) {
+            this.messageService.add({
+              severity: 'warn',
+              summary: 'Aviso',
+              detail: 'Debe seleccionar un documento para aprobar.'
+            });
+            return;
+          }
+      
+          // Puedes incluir confirmación si quieres
+          this.confirmationService.confirm({
+            message: '¿Estás seguro que deseas aprobar este documento?',
+            header: 'Confirmar aprobación',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Sí',
+            rejectLabel: 'No',
+            accept: () => {
+              const usuario = this.cookieService.get('usuario') || 'Usuario';
+              const datosParaEditar = {
+                ...documento,
+                estado: `APROBADO POR ${usuario}`
+              };
+      
+              this.cargandoc = true;
+              this.apiService.editarDocumento(datosParaEditar).subscribe({
+                next: () => {
+                  this.cargandoc = false;
+                  this.messageService.add({
+                    severity: 'success',
+                    summary: 'Éxito',
+                    detail: 'Documento aprobado correctamente.'
+                  });
+      
+                  // Refrescar la tabla igual que en eliminar
+                  if (!this.idCarpetaPadre || this.idCarpetaPadre === 0) {
+                    this.apiService.listarCarpeta('').subscribe((res) => {
+                      this.carpetasRaiz = res.data;
+                    });
+                  } else {
+                    this.verDetalle(this.idCarpetaPadre);
+                  }
+                },
+                error: (err) => {
+                  this.cargandoc = false;
+                  this.messageService.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'No se pudo aprobar el documento.'
+                  });
+                  console.error('Error al aprobar documento:', err);
+                }
+              });
+            }
+          });
+        }
+      }      
+      
     ];
     
     // Usamos el componente directamente pasado como parámetro
@@ -850,25 +927,74 @@ export class BillingpaymentComponent implements AfterViewInit{
       }
     }
   
-    // Llamar a la API
+    // Comparar usando triple igual con conversión explícita
+    const oldIgv = String(e.oldData['srIgv']);
+    const newIgv = String(e.newData['srIgv']);
+  
+    // Solo si cambió el srIgv
+    if (oldIgv !== newIgv) {
+      const tipoIgv = cleanedData['srIgv'];
+      const importeBruto = parseFloat(cleanedData['importeBruto']);
+  
+      if (!isNaN(importeBruto)) {
+        let nuevoImporteNeto = importeBruto;
+  
+        if (tipoIgv === '2') {
+          const det = Math.floor(importeBruto * 0.12);
+          nuevoImporteNeto = importeBruto - det;
+        } else if (tipoIgv === '3') {
+          const ret = parseFloat((importeBruto * 0.03).toFixed(2));
+          nuevoImporteNeto = importeBruto - ret;
+        }
+  
+        cleanedData['importeNeto'] = nuevoImporteNeto;
+  
+        // Actualizar producto en products
+        const index = this.products.findIndex(p => p.id === cleanedData.id);
+        if (index !== -1) {
+          this.products[index].importeNeto = nuevoImporteNeto;
+          this.products[index].srIgv = tipoIgv; // asegurarse de reflejar el cambio también aquí
+        }
+      }
+    }
+  
+    this.cargandoc = true;
     this.apiService.editarDocumento(cleanedData).subscribe({
       next: () => {
+        this.cargandoc = false;
         this.messageService.add({
           severity: 'success',
           summary: 'Éxito',
-          detail: 'Documento actualizado correctamente'
+          detail: 'Documento actualizado correctamente.'
         });
+  
+        // Solo refrescar si existe el ID de carpeta
+        const idCarpeta = this.route.snapshot.queryParamMap.get('idcarpeta') || this.route.snapshot.queryParamMap.get('idCarpeta');
+        if (idCarpeta) {
+          this.apiService.filtrarDocumentos(idCarpeta).subscribe({
+            next: (res) => {
+              this.products = res.data;
+              this.mostrarTablaCarpetas = true;
+              this.cargando = false;
+            },
+            error: (err) => {
+              console.error('Error al filtrar documentos:', err);
+            }
+          });
+        }
       },
       error: (err) => {
+        this.cargandoc = false;
         this.messageService.add({
           severity: 'error',
           summary: 'Error',
           detail: 'No se pudo actualizar el documento'
         });
-        e.cancel = true; // cancela visualmente la edición
+        e.cancel = true;
       }
     });
   }
+  
 
   cerrarVistaArchivos() {
     this.mostrarTablaArchivos = false;
@@ -1217,7 +1343,12 @@ export class BillingpaymentComponent implements AfterViewInit{
       descripcionp: item.descripcion,
       cantidad: item.Cantidad || item.cantidad,
       producto: item.idProducto,
-      referencia: item.referencia
+      referencia: item.referencia,
+      moneda: item.moneda,
+      regimen: item.regimen,
+      inafecto: item.inafecto,
+      baseImponible: item.baseImponible,
+      total: item.total,
     }));
     this.mostrarTablaSeleccionados = true;
     this.documentosConfirmados = [...this.seleccionadosTabla1];

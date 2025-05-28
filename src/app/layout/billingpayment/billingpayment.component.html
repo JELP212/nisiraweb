@@ -579,6 +579,60 @@
         </div>
       </ng-template>
     </p-card>
+
+    <p-card header="Documentos seleccionados" styleClass="w-full md:w-100">
+      <ng-template pTemplate="content">
+        <div *ngIf="productosSeleccionados" class="space-y-4">
+          <div class="grid grid-cols-3 gap-4">
+            <!-- Moneda -->
+            <div class="col-span-1">
+              <label class="font-semibold">Moneda</label>
+              <div class="flex items-center space-x-2">
+                <input type="text" class="p-inputtext p-component w-full" [value]="[productosSeleccionados[0]?.moneda]" readonly />
+                <input type="text" class="p-inputtext p-component w-full" value="Soles" readonly />
+              </div>
+            </div>
+        
+            <!-- Régimen -->
+            <div class="col-span-1">
+              <label class="font-semibold">Régimen</label>
+              <div class="flex items-center space-x-2">
+                <i class="pi pi-briefcase"></i>
+                <input type="text" class="p-inputtext p-component w-full" [value]="productosSeleccionados[0]?.regimen" readonly />
+                <input type="text" class="p-inputtext p-component w-full" value="Afecto" readonly />
+              </div>
+            </div>
+        
+            <!-- Inafecto -->
+            <div class="col-span-1">
+              <label class="font-semibold">Inafecto</label>
+              <input type="text" class="p-inputtext p-component w-full text-right" [value]="productosSeleccionados[0]?.inafecto || '0.00'" readonly />
+            </div>
+          </div>
+        
+          <!-- Base Imponible -->
+          <div>
+            <label class="font-semibold">Base Imponible</label>
+            <input type="text" class="p-inputtext p-component w-full text-right" [value]="productosSeleccionados[0]?.baseImponible" readonly />
+          </div>
+        
+          <!-- Impuestos -->
+          <div class="flex items-center gap-4">
+            <label class="font-semibold">Impuestos</label>
+            <button pButton icon="pi pi-search" class="p-button-text p-button-sm"></button>
+            <input type="text" class="p-inputtext p-component w-20 text-right" value="18" readonly /> %
+            <input type="text" class="p-inputtext p-component w-20 text-right" value="25" readonly /> :
+          </div>
+        
+          <!-- Total Provisionado -->
+          <div class="flex justify-end">
+            <strong>Total Prov:</strong>
+            <input type="text" class="p-inputtext p-component w-32 text-right font-bold ml-2" [value]="productosSeleccionados[0]?.total || '0.00'" readonly />
+          </div>
+        </div>
+        
+      </ng-template>
+    </p-card>
     
 
   </div>
@@ -586,7 +640,7 @@
   <!-- Tabla -->
   <dx-data-grid
     [dataSource]="productosSeleccionados"
-    class="bg-white rounded-xl shadow-sm border border-gray-200 w-full h-full"
+    class="bg-white rounded-xl shadow-sm border border-gray-200 w-full"
     [selection]="{ mode: 'single' }"
     [showBorders]="false"
     [rowAlternationEnabled]="true"
@@ -626,6 +680,15 @@
       <dxi-button name="save" icon="save"></dxi-button>
       <dxi-button name="cancel" icon="revert"></dxi-button>
     </dxi-column>
+    <dxo-summary>
+      <dxi-total-item column="destino" summaryType="count"> </dxi-total-item>
+
+      <dxi-total-item
+        column="importe"
+        summaryType="sum"
+      >
+      </dxi-total-item>
+    </dxo-summary>
   </dx-data-grid>
   <div class="flex justify-end mt-5 mb-4">
     <p-button 
