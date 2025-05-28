@@ -146,7 +146,7 @@ export class BillingpaymentComponent implements AfterViewInit{
   rev = [
     { idRev: '01', descripcion: 'CONFORME' },
     { idRev: '02', descripcion: 'PEND FAC' },
-    { idRev: '02', descripcion: 'OBSERVADO' }
+    { idRev: '03', descripcion: 'OBSERVADO' }
   ];
   revSeleccionado: string = '';
 
@@ -156,6 +156,15 @@ export class BillingpaymentComponent implements AfterViewInit{
     { idigv: '3', descripcion: 'RET' }
   ];
   igvSeleccionado: string = '';
+
+  ctb = [
+    { idCtb: '01', descripcion: 'PROV CTB' },
+    { idCtb: '02', descripcion: 'RECHAZADO' },
+    { idCtb: '03', descripcion: 'CERRADO' },
+    { idCtb: '04', descripcion: 'PROV CAJA CHICA' },
+    { idCtb: '05', descripcion: 'PROV EAR VARIOS' },
+  ];
+  ctbSeleccionado: string = '';
 
   area: any[] = [];
   tipoDet: any[] = [];
@@ -274,8 +283,6 @@ export class BillingpaymentComponent implements AfterViewInit{
       
           this.carpetasRaiz = res.data;
       
-          console.log('oninit');
-      
           if (estabaVacio && this.carpetasRaiz.length > 0) {
             this.verDetalle(this.carpetasRaiz[0].idCarpeta);
           }
@@ -366,9 +373,7 @@ export class BillingpaymentComponent implements AfterViewInit{
         this.tituloDialogAprovisionar = `ID Carpeta: ${idCarpeta}`;
         this.cargarResumenProducto(idCarpeta);
         this.mostrarDialogAprovisionar = true;
-        
 
-        console.log(idCarpeta);
         }
       },
       {
@@ -896,12 +901,8 @@ export class BillingpaymentComponent implements AfterViewInit{
             detail: 'No se pudo listar la carpeta'
           });
           this.cargandoc = false;
-        }
-
-        
+        }   
       });
-      console.log("prueba")
-      console.log(idCarpeta)
       
     }
   }
@@ -930,7 +931,22 @@ export class BillingpaymentComponent implements AfterViewInit{
         cleanedData[key] = value;
       }
     }
-  
+  // ✅ Validación del campo "periodo"
+      const periodo = cleanedData['periodo'];
+      const esPeriodoValido = /^\d{6}$/.test(periodo);
+      const anio = parseInt(periodo?.substring(0, 4), 10);
+      const mes = parseInt(periodo?.substring(4, 6), 10);
+
+      if (!esPeriodoValido || anio < 2000 || anio > 2100 || mes < 1 || mes > 12) {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Periodo inválido',
+          detail: 'El periodo debe tener 6 dígitos: AAAAMM (año entre 2000 y 2100, mes entre 01 y 12).'
+        });
+
+        e.cancel = true;
+        return;
+      }
     // Comparar usando triple igual con conversión explícita
     const oldIgv = String(e.oldData['srIgv']);
     const newIgv = String(e.newData['srIgv']);
@@ -1088,7 +1104,6 @@ export class BillingpaymentComponent implements AfterViewInit{
 
     this.apiService.listarArchivosCarpeta(idDocumento.trim()).subscribe({
       next: (response) => {
-        console.log(response)
         this.archivosCarpeta = Array.isArray(response) ? response : [response];
         this.cargandoArchivos = false;
         this.mostrarTablaArchivos = true;
@@ -1108,7 +1123,6 @@ export class BillingpaymentComponent implements AfterViewInit{
 
     if (idCarpeta) {
       this.apiService.listarCarpeta(idCarpeta).subscribe((res) => {
-        console.log(res)
         if (
           res.data.length === 1 &&
           res.data[0].final === true &&
@@ -1199,7 +1213,6 @@ export class BillingpaymentComponent implements AfterViewInit{
   
     this.apiService.listarDocumentosPendientes(this.idEmpresa, ruc, idDocumento).subscribe({
       next: (respuesta) => {
-        console.log('Documentos recibidos:', respuesta);
         this.documentosPendientes = (respuesta?.data || []).map((doc: any) => ({
           ...doc,
           id: `${doc.serie}-${doc.numero}`
@@ -1258,7 +1271,6 @@ export class BillingpaymentComponent implements AfterViewInit{
     }
   
     const ruc = this.idCarpeta.split('_')[0];
-    console.log('RUC extraído:', ruc);
   
     agregados.forEach((documento: any) => {
       const idDocumento = documento.tipoDocumento || this.tipoSeleccionado;
@@ -1284,8 +1296,6 @@ export class BillingpaymentComponent implements AfterViewInit{
       if (idDocumento === 'GRP') {
         this.apiService.ConsultarRefGuia(idDocumento, serie, numero).subscribe({
           next: (res) => {
-            console.log('Referencia GRP:', res);
-            // Guardar en documentosConfirmados
             const documentoConfirmado = {
               tipo: idDocumento,
               serie,
@@ -1354,8 +1364,6 @@ export class BillingpaymentComponent implements AfterViewInit{
     this.mostrarTablaSeleccionados = true;
     this.documentosConfirmados = [...this.seleccionadosTabla1];
     this.dialogoVisible = false;
-    console.log(this.productosSeleccionados);
-    console.log('products:', this.products);
   }
   
   
@@ -1365,7 +1373,6 @@ export class BillingpaymentComponent implements AfterViewInit{
   
     const index = this.productosSeleccionados.findIndex(item => item === oldData);
   
-    // Función para aplicar los cambios válidos
     const aplicarCambios = () => {
       if (index !== -1) {
         this.productosSeleccionados[index] = {
@@ -1381,7 +1388,7 @@ export class BillingpaymentComponent implements AfterViewInit{
       }
     };
   
-    // Validar cuenta si fue modificada
+    // Validar cuenta
     if (updatedData?.cuenta && updatedData.cuenta !== oldData.cuenta) {
       this.apiService.validarCuenta(this.idEmpresa, updatedData.cuenta).subscribe(res => {
         if (res?.data?.[0] === false) {
@@ -1390,7 +1397,7 @@ export class BillingpaymentComponent implements AfterViewInit{
             summary: 'Cuenta inválida',
             detail: 'Esa cuenta no existe, ingrese una correcta'
           });
-    
+  
           if (index !== -1) this.productosSeleccionados[index].cuenta = '';
           e.cancel = true;
         } else {
@@ -1399,13 +1406,13 @@ export class BillingpaymentComponent implements AfterViewInit{
             summary: 'Cuenta válida',
             detail: 'La cuenta fue validada correctamente'
           });
-    
-          aplicarCambios(); // cuenta válida
+  
+          aplicarCambios();
         }
       });
     }
-    
-    // Validar destino si fue modificado
+  
+    // Validar destino
     else if (updatedData?.destino && updatedData.destino !== oldData.destino) {
       this.apiService.validarDestino(updatedData.destino).subscribe(res => {
         if (res?.data?.[0] === false) {
@@ -1414,7 +1421,7 @@ export class BillingpaymentComponent implements AfterViewInit{
             summary: 'Destino inválido',
             detail: 'Ese destino no existe, ingrese uno correcto'
           });
-    
+  
           if (index !== -1) this.productosSeleccionados[index].destino = '';
           e.cancel = true;
         } else {
@@ -1423,14 +1430,43 @@ export class BillingpaymentComponent implements AfterViewInit{
             summary: 'Destino válido',
             detail: 'El destino fue validado correctamente'
           });
-    
-          aplicarCambios(); // destino válido
+  
+          aplicarCambios();
         }
       });
-    }    
-  }
+    }
   
+    // ✅ Validar centro de costos (campo 'costos')
+    else if (updatedData?.costos && updatedData.costos !== oldData.costos) {
+      this.apiService.validarCentroCosto(this.idEmpresa, updatedData.costos).subscribe(res => {
+        if (res?.success && res.data?.[0]) {
+          // ✅ Asignar descripción al campo 'descripcioncc'
+          updatedData.descripcioncc = res.data[0];
   
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Centro de costos válido',
+            detail: `Centro de costos: ${res.data[0]}`
+          });
+  
+          aplicarCambios();
+        } else {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Centro de costos inválido',
+            detail: 'No se encontró el centro de costos ingresado'
+          });
+  
+          if (index !== -1) {
+            this.productosSeleccionados[index].costos = '';
+            this.productosSeleccionados[index].descripcioncc = '';
+          }
+  
+          e.cancel = true;
+        }
+      });
+    }
+  }  
   
   generar() {
     this.confirmationService.confirm({
@@ -1967,7 +2003,6 @@ export class BillingpaymentComponent implements AfterViewInit{
             </dcobrarpagardoc_a>
           </VFPData>`
         };
-        console.log(body)
         /*this.apiService.grabarCobrarPagarDoc(body).subscribe({
           next: () => {
             this.messageService.add({
@@ -2079,7 +2114,7 @@ export class BillingpaymentComponent implements AfterViewInit{
 
   getMontoImpuesto(): number {
     const id = this.productoSeleccionadoResumen?.impuestos?.trim();
-    const total = this.getImporteTotal();
+    const total = this.productoSeleccionadoResumen?.baseImponible || 0;
   
     if (id === '027') {
       return total * 0.10;
@@ -2089,18 +2124,12 @@ export class BillingpaymentComponent implements AfterViewInit{
       return 0;
     }
   }
-
-  getImporteTotal(): number {
-    return this.productosSeleccionados.reduce((acc, prod) => acc + (Number(prod.importe) || 0), 0);
-  }
   
   cargarResumenProducto(idCarpeta: string) {  
 
-    console.log(idCarpeta)
     const productoRelacionado = this.products.find(
       (prod: any) => prod.idCarpeta === idCarpeta
     );
-    console.log(productoRelacionado);
 
     if (!productoRelacionado) {
       console.warn('No se encontró producto con idCarpeta:', idCarpeta);
@@ -2108,7 +2137,7 @@ export class BillingpaymentComponent implements AfterViewInit{
     }
     const moneda = productoRelacionado.moneda || '';
     const regimen = productoRelacionado.regimen || '';
-    const baseImponible = productoRelacionado.baseImponible || '';
+    const baseImponible = productoRelacionado.importeNeto || '';
     const total = productoRelacionado.total || '';
     const impuestos = productoRelacionado.impuestos || '';
   
@@ -2123,8 +2152,6 @@ export class BillingpaymentComponent implements AfterViewInit{
     this.mostrarTablaSeleccionados = true;
     this.documentosConfirmados = [...this.seleccionadosTabla1];
     this.dialogoVisible = false;
-  
-    console.log('Resumen seleccionado:', this.productoSeleccionadoResumen);
   }
   
   

@@ -228,4 +228,13 @@ export class ApiService {
   
     return this.https.get(`${this.apiUrl}/BillingPayment/ValidarDestino`, { params });
   }
+
+  validarCentroCosto(idEmpresa: string, idCentroCosto:string): Observable<any> {
+    const params = new HttpParams()
+      .set('idEmpresa', idEmpresa)
+      .set('idCentroCosto', idCentroCosto)
+  
+    return this.https.get(`${this.apiUrl}/BillingPayment/ValidarCentroCosto`, { params });
+  }
+
 }

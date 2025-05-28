@@ -184,6 +184,7 @@
           <dxo-header-filter [allowSelectAll]="false">
             <dxo-search [enabled]="true"></dxo-search>
           </dxo-header-filter>
+          <dxo-lookup [dataSource]="ctb" displayExpr="descripcion" valueExpr="idCtb"></dxo-lookup>
         </dxi-column>
         <dxi-column dataField="fechaVcto" caption="Fecha Vcto" dataType="date">
           <dxo-header-filter [allowSelectAll]="false">
@@ -593,13 +594,13 @@
             {{ productoSeleccionadoResumen.regimen.trim() }} - 
             {{ getDescripcionRegimen(productoSeleccionadoResumen.regimen.trim()) }}
           </p>
-          <p><strong>Base Imponible:</strong> {{ getImporteTotal() | number: '1.2-2' }}</p>
+          <p><strong>Base Imponible:</strong> {{ productoSeleccionadoResumen.baseImponible || 0 | number: '1.2-2' }}</p>
           <p>
             <strong>Impuestos:</strong>
             {{ getDescripcionImpuestos(productoSeleccionadoResumen.impuestos.trim()) }} - 
             S/ {{ getMontoImpuesto() | number: '1.2-2' }}
           </p>
-          <p><strong>Total Provisionado</strong> {{ this.getImporteTotal()-this.getMontoImpuesto() | number: '1.2-2' }}</p>
+          <p><strong>Total Provisionado</strong> {{ productoSeleccionadoResumen.baseImponible + this.getMontoImpuesto() | number: '1.2-2' }}</p>
         </div>
         <ng-template #sinProductos>
           <em>No hay productos seleccionados.</em>
