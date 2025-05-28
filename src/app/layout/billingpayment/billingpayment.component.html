@@ -550,7 +550,7 @@
 
 
 
-<p-dialog [header]="tituloDialogAprovisionar" [(visible)]="mostrarDialogAprovisionar" [modal]="true" [style]="{width: '80vw', height: '80vh'}" [closable]="true" [resizable]="false" (onHide)="cerrarDialogo()">
+<p-dialog [header]="'Carpeta: ' + this.idCarpeta" [(visible)]="mostrarDialogAprovisionar" [modal]="true" [style]="{width: '80vw', height: '80vh'}" [closable]="true" [resizable]="false" (onHide)="cerrarDialogo()">
   <!-- Contenedor principal con distribución horizontal -->
   <div class="flex gap-4 mb-4 items-start">
     
@@ -579,60 +579,35 @@
         </div>
       </ng-template>
     </p-card>
-
-    <p-card header="Documentos seleccionados" styleClass="w-full md:w-100">
+    
+    <p-card header="Resumen de Productos Seleccionados" styleClass="w-full md:w-100">
       <ng-template pTemplate="content">
-        <div *ngIf="productosSeleccionados" class="space-y-4">
-          <div class="grid grid-cols-3 gap-4">
-            <!-- Moneda -->
-            <div class="col-span-1">
-              <label class="font-semibold">Moneda</label>
-              <div class="flex items-center space-x-2">
-                <input type="text" class="p-inputtext p-component w-full" [value]="[productosSeleccionados[0]?.moneda]" readonly />
-                <input type="text" class="p-inputtext p-component w-full" value="Soles" readonly />
-              </div>
-            </div>
-        
-            <!-- Régimen -->
-            <div class="col-span-1">
-              <label class="font-semibold">Régimen</label>
-              <div class="flex items-center space-x-2">
-                <i class="pi pi-briefcase"></i>
-                <input type="text" class="p-inputtext p-component w-full" [value]="productosSeleccionados[0]?.regimen" readonly />
-                <input type="text" class="p-inputtext p-component w-full" value="Afecto" readonly />
-              </div>
-            </div>
-        
-            <!-- Inafecto -->
-            <div class="col-span-1">
-              <label class="font-semibold">Inafecto</label>
-              <input type="text" class="p-inputtext p-component w-full text-right" [value]="productosSeleccionados[0]?.inafecto || '0.00'" readonly />
-            </div>
-          </div>
-        
-          <!-- Base Imponible -->
-          <div>
-            <label class="font-semibold">Base Imponible</label>
-            <input type="text" class="p-inputtext p-component w-full text-right" [value]="productosSeleccionados[0]?.baseImponible" readonly />
-          </div>
-        
-          <!-- Impuestos -->
-          <div class="flex items-center gap-4">
-            <label class="font-semibold">Impuestos</label>
-            <button pButton icon="pi pi-search" class="p-button-text p-button-sm"></button>
-            <input type="text" class="p-inputtext p-component w-20 text-right" value="18" readonly /> %
-            <input type="text" class="p-inputtext p-component w-20 text-right" value="25" readonly /> :
-          </div>
-        
-          <!-- Total Provisionado -->
-          <div class="flex justify-end">
-            <strong>Total Prov:</strong>
-            <input type="text" class="p-inputtext p-component w-32 text-right font-bold ml-2" [value]="productosSeleccionados[0]?.total || '0.00'" readonly />
-          </div>
+        <div *ngIf="productoSeleccionadoResumen">
+          <p>
+            <strong>Moneda:</strong>
+            {{ productoSeleccionadoResumen.moneda.trim() }} - 
+            {{ getDescripcionMoneda(productoSeleccionadoResumen.moneda.trim()) }}
+          </p>
+          <p>
+            <strong>Régimen:</strong>
+            {{ productoSeleccionadoResumen.regimen.trim() }} - 
+            {{ getDescripcionRegimen(productoSeleccionadoResumen.regimen.trim()) }}
+          </p>
+          <p><strong>Base Imponible:</strong> {{ getImporteTotal() | number: '1.2-2' }}</p>
+          <p>
+            <strong>Impuestos:</strong>
+            {{ getDescripcionImpuestos(productoSeleccionadoResumen.impuestos.trim()) }} - 
+            S/ {{ getMontoImpuesto() | number: '1.2-2' }}
+          </p>
+          <p><strong>Total Provisionado</strong> {{ this.getImporteTotal()-this.getMontoImpuesto() | number: '1.2-2' }}</p>
         </div>
-        
+        <ng-template #sinProductos>
+          <em>No hay productos seleccionados.</em>
+        </ng-template>
       </ng-template>
     </p-card>
+    
+    
     
 
   </div>

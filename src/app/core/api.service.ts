@@ -98,7 +98,7 @@ export class ApiService {
     onsContable: string;
     regimen: string;
     importeBruto: number;
-    impuestos: number;
+    impuestos: string;
     importeNeto: number;
     moneda: string;
     fechaProg: string;
@@ -212,5 +212,20 @@ export class ApiService {
       .set('nombreArchivo', nombreArchivo)
   
     return this.https.delete(`${this.apiUrl}/BillingPayment/eliminarArchivoDocumento`, { params });
+  }
+
+  validarCuenta(idEmpresa: string, idCuenta:string): Observable<any> {
+    const params = new HttpParams()
+      .set('idEmpresa', idEmpresa)
+      .set('idCuenta', idCuenta)
+  
+    return this.https.get(`${this.apiUrl}/BillingPayment/ValidarCuenta`, { params });
+  }
+
+  validarDestino(idDestino: string): Observable<any> {
+    const params = new HttpParams()
+      .set('idDestino', idDestino)
+  
+    return this.https.get(`${this.apiUrl}/BillingPayment/ValidarDestino`, { params });
   }
 }

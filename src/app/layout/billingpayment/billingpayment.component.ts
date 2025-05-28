@@ -194,6 +194,8 @@ export class BillingpaymentComponent implements AfterViewInit{
 
   mostrarAyudaFinal: boolean = false;
 
+  productoSeleccionadoResumen: any = null;
+
   constructor(private apiService: ApiService,
               private messageService: MessageService, 
               private route: ActivatedRoute,
@@ -362,7 +364,9 @@ export class BillingpaymentComponent implements AfterViewInit{
         // Si no tiene ID, permite abrir el diálogo
         this.generarDeshabilitado = false;
         this.tituloDialogAprovisionar = `ID Carpeta: ${idCarpeta}`;
+        this.cargarResumenProducto(idCarpeta);
         this.mostrarDialogAprovisionar = true;
+        
 
         console.log(idCarpeta);
         }
@@ -1323,53 +1327,110 @@ export class BillingpaymentComponent implements AfterViewInit{
   }
 
   mostrarDatosEnGrid() {
-
     const productoRelacionado = this.products.find(
       (prod: any) => prod.idCarpeta === this.idCarpeta
     );
   
-    // Extraer la observación si existe
     const observacion = productoRelacionado?.observacionesGlosa || '';
-
-    this.productosSeleccionados = this.seleccionadosTabla2.map((item, index) => ({
-      idCarpeta: index + 1,
-      item: item.item,
-      cuenta: '',
-      observaciones: observacion,
-      costos: '',
-      descripcioncc: '',
-      destino: '',
-      importe: '',
-      descripcionp: item.descripcion,
-      cantidad: item.Cantidad || item.cantidad,
-      producto: item.idProducto,
-      referencia: item.referencia,
-      moneda: item.moneda,
-      regimen: item.regimen,
-      inafecto: item.inafecto,
-      baseImponible: item.baseImponible,
-      total: item.total,
-    }));
+  
+    this.productosSeleccionados = this.seleccionadosTabla2.map((item, index) => {
+  
+      return {
+        idCarpeta: index + 1,
+        item: item.item,
+        cuenta: '',
+        observaciones: observacion,
+        costos: '',
+        descripcioncc: '',
+        destino: '',
+        importe: '',
+        descripcionp: item.descripcion,
+        cantidad: item.Cantidad || item.cantidad,
+        producto: item.idProducto,
+        referencia: item.referencia,
+      };
+    });
+  
     this.mostrarTablaSeleccionados = true;
     this.documentosConfirmados = [...this.seleccionadosTabla1];
     this.dialogoVisible = false;
     console.log(this.productosSeleccionados);
+    console.log('products:', this.products);
   }
+  
   
   editar(e: any) {
     const updatedData = e.newData;
     const oldData = e.oldData;
   
-    // Busca el índice del objeto modificado
     const index = this.productosSeleccionados.findIndex(item => item === oldData);
   
-    if (index !== -1) {
-      this.productosSeleccionados[index] = {
-        ...this.productosSeleccionados[index],
-        ...updatedData
-      };
+    // Función para aplicar los cambios válidos
+    const aplicarCambios = () => {
+      if (index !== -1) {
+        this.productosSeleccionados[index] = {
+          ...this.productosSeleccionados[index],
+          ...updatedData
+        };
+  
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Cambios guardados',
+          detail: 'Los datos fueron actualizados correctamente'
+        });
+      }
+    };
+  
+    // Validar cuenta si fue modificada
+    if (updatedData?.cuenta && updatedData.cuenta !== oldData.cuenta) {
+      this.apiService.validarCuenta(this.idEmpresa, updatedData.cuenta).subscribe(res => {
+        if (res?.data?.[0] === false) {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Cuenta inválida',
+            detail: 'Esa cuenta no existe, ingrese una correcta'
+          });
+    
+          if (index !== -1) this.productosSeleccionados[index].cuenta = '';
+          e.cancel = true;
+        } else {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Cuenta válida',
+            detail: 'La cuenta fue validada correctamente'
+          });
+    
+          aplicarCambios(); // cuenta válida
+        }
+      });
     }
+    
+    // Validar destino si fue modificado
+    else if (updatedData?.destino && updatedData.destino !== oldData.destino) {
+      this.apiService.validarDestino(updatedData.destino).subscribe(res => {
+        if (res?.data?.[0] === false) {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Destino inválido',
+            detail: 'Ese destino no existe, ingrese uno correcto'
+          });
+    
+          if (index !== -1) this.productosSeleccionados[index].destino = '';
+          e.cancel = true;
+        } else {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Destino válido',
+            detail: 'El destino fue validado correctamente'
+          });
+    
+          aplicarCambios(); // destino válido
+        }
+      });
+    }    
   }
+  
+  
   
   generar() {
     this.confirmationService.confirm({
@@ -2000,5 +2061,71 @@ export class BillingpaymentComponent implements AfterViewInit{
       }
     });
   }
+  
+  getDescripcionMoneda(id: string): string {
+    const monedaEncontrada = this.moneda.find(m => m.idMoneda === id);
+    return monedaEncontrada ? monedaEncontrada.descripcion : 'Desconocida';
+  }
+  
+  getDescripcionRegimen(id: string): string {
+    const regimenEncontrado = this.regimen.find(r => r.idRegimen === id);
+    return regimenEncontrado ? regimenEncontrado.descripcion : 'Desconocido';
+  }
+
+  getDescripcionImpuestos(id: string): string {
+    const impuestoEncontrado = this.impuestos.find(r => r.idImpuestos === id);
+    return impuestoEncontrado ? impuestoEncontrado.descripcion : 'Desconocido';
+  }
+
+  getMontoImpuesto(): number {
+    const id = this.productoSeleccionadoResumen?.impuestos?.trim();
+    const total = this.getImporteTotal();
+  
+    if (id === '027') {
+      return total * 0.10;
+    } else if (id === '003') {
+      return total * 0.18;
+    } else {
+      return 0;
+    }
+  }
+
+  getImporteTotal(): number {
+    return this.productosSeleccionados.reduce((acc, prod) => acc + (Number(prod.importe) || 0), 0);
+  }
+  
+  cargarResumenProducto(idCarpeta: string) {  
+
+    console.log(idCarpeta)
+    const productoRelacionado = this.products.find(
+      (prod: any) => prod.idCarpeta === idCarpeta
+    );
+    console.log(productoRelacionado);
+
+    if (!productoRelacionado) {
+      console.warn('No se encontró producto con idCarpeta:', idCarpeta);
+      return;
+    }
+    const moneda = productoRelacionado.moneda || '';
+    const regimen = productoRelacionado.regimen || '';
+    const baseImponible = productoRelacionado.baseImponible || '';
+    const total = productoRelacionado.total || '';
+    const impuestos = productoRelacionado.impuestos || '';
+  
+    this.productoSeleccionadoResumen = {
+      moneda,
+      regimen,
+      baseImponible,
+      impuestos,
+      total
+    };
+  
+    this.mostrarTablaSeleccionados = true;
+    this.documentosConfirmados = [...this.seleccionadosTabla1];
+    this.dialogoVisible = false;
+  
+    console.log('Resumen seleccionado:', this.productoSeleccionadoResumen);
+  }
+  
   
 }
