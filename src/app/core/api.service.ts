@@ -21,12 +21,13 @@ export class ApiService {
   }
 
 
-  crearDocumento(idEmpresa: string, idCarpeta: string, periodo: string, idCarpetaPadre:number): Observable<any> {
+  crearDocumento(idEmpresa: string, idCarpeta: string, periodo: string, idCarpetaPadre:number, usuarioCreacion:string): Observable<any> {
     const body = {
       idEmpresa,
       idCarpeta,
       periodo,
-      idCarpetaPadre
+      idCarpetaPadre,
+      usuarioCreacion
     };
   
     return this.https.post(`${this.apiUrl}/BillingPayment/crearDocumento`, body);
@@ -109,6 +110,7 @@ export class ApiService {
     observacionesGlosa: string;
     fechaCreacion: string;
     fechaModificacion: string;
+    usuarioModificacion: string;
   }): Observable<any> {
     return this.https.post(`${this.apiUrl}/BillingPayment/editarDocumento`, body);
   }  
@@ -235,6 +237,13 @@ export class ApiService {
       .set('idCentroCosto', idCentroCosto)
   
     return this.https.get(`${this.apiUrl}/BillingPayment/ValidarCentroCosto`, { params });
+  }
+
+  historialDocumento(idDocumento: string): Observable<any> {
+    const params = new HttpParams()
+      .set('idDocumento', idDocumento)
+  
+    return this.https.get(`${this.apiUrl}/BillingPayment/HistorialDocumento`, { params });
   }
 
 }
