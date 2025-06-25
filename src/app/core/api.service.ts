@@ -8,8 +8,8 @@ import { switchMap, catchError } from 'rxjs/operators';
 })
 export class ApiService {
 
-  //private readonly apiUrl = 'https://localhost:8085/api';
-  private readonly apiUrl = 'http://161.132.222.124:9697/api';
+  private readonly apiUrl = 'https://localhost:8085/api';
+  //private readonly apiUrl = 'http://161.132.222.124:9697/api';
   constructor(private https: HttpClient) { }
 
   iniciarSesion(usuario: string, clave: string): Observable<any> {
@@ -244,4 +244,30 @@ export class ApiService {
     return this.https.get(`${this.apiUrl}/BillingPayment/HistorialDocumento`, { params });
   }
 
+  enviarAFactiliza(data: {
+    ruc_emisor: string;
+    codigo_tipo_documento: string;
+    serie_documento: string;
+    numero_documento: string;
+    fecha_emision: string;
+    total: string;
+  }): Observable<any> {
+    const url = 'https://api.factiliza.com/v1/sunat/cpe';
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzODg5NyIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6ImNvbnN1bHRvciJ9.1nvg8UKFQFIc2JNZkD5lmzCZsR4-_PH7aIHiRvPhkU0'; // ← Reemplaza por tu token real
+  
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+  
+    return this.https.post(url, data, { headers });
+  }
+  
+  listaCuentas(): Observable<any>{
+    return this.https.get(`${this.apiUrl}/BillingPayment/listaCuentas`,{});
+  }
+
+  listaCentrosCosto(): Observable<any>{
+    return this.https.get(`${this.apiUrl}/BillingPayment/listaCentrosCosto`,{});
+  }
 }
