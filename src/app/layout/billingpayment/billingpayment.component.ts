@@ -38,6 +38,9 @@ import { DropdownModule } from 'primeng/dropdown';
 import { ConfirmationService } from 'primeng/api';
 import { ConfirmDialogModule } from 'primeng/confirmdialog'
 import { CookieService } from 'ngx-cookie-service';
+import Tesseract from 'tesseract.js';
+import * as pdfjsLib from 'pdfjs-dist';
+
 interface Product {
   id?: string;
   code?: string;
@@ -1080,9 +1083,9 @@ validar = false;
 
     const ruc_emisor = partes[0];
     const parteSerieNumero = partes[1]; // Ej: E002-234
-    const [serie_documento, numero_documento] = parteSerieNumero.split('-') ?? [];
+    const [serie_documento, numero_documentoRaw] = parteSerieNumero.split('-') ?? [];
 
-    if (!serie_documento || !numero_documento) {
+    if (!serie_documento || !numero_documentoRaw) {
       this.messageService.add({
         severity: 'error',
         summary: 'Error en formato',
@@ -1090,7 +1093,7 @@ validar = false;
       });
       return;
     }
-
+    const numero_documento = numero_documentoRaw.trim();
     // Determinar el tipo de documento según la letra inicial de la serie
     const letraSerie = serie_documento[0];
     let codigo_tipo_documento = '';
@@ -1121,12 +1124,12 @@ validar = false;
     }
 
     // Obtener campos restantes
-    const fecha_emision = documento.fechaEmision;
+    const fecha_emision_original = documento.fechaEmision;
     const total = documento.importeBruto;
 
-    if (!fecha_emision || !total) {
+    if (!fecha_emision_original || !total) {
       const faltan = [];
-      if (!fecha_emision) faltan.push('fecha de emisión');
+      if (!fecha_emision_original) faltan.push('fecha de emisión');
       if (!total) faltan.push('importe bruto');
       this.messageService.add({
         severity: 'warn',
@@ -1135,7 +1138,13 @@ validar = false;
       });
       return;
     }
+    // Formatear fecha a dd/mm/yyyy
+const fechaObj = new Date(fecha_emision_original);
+const fecha_emision = `${fechaObj.getDate().toString().padStart(2, '0')}/${(fechaObj.getMonth() + 1).toString().padStart(2, '0')}/${fechaObj.getFullYear()}`;
 
+const totalFormateado = Number(total).toFixed(2);
+
+    
     // Enviar a Factiliza
     const payload = {
       ruc_emisor,
@@ -1143,12 +1152,12 @@ validar = false;
       serie_documento,
       numero_documento,
       fecha_emision,
-      total: total.toString()
+      total: totalFormateado
     };
     
     this.apiService.enviarAFactiliza(payload).subscribe({
       next: (res) => {
-        const estado = res?.cpe?.data?.comprobante_estado_codigo;
+        const estado = res?.data?.comprobante_estado_codigo;
     
         if (estado === '1') {
           this.validar = true;
@@ -2505,4 +2514,84 @@ validar = false;
     }
   }
   
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+  
+    const file = input.files[0];
+  
+    if (file.type === 'application/pdf') {
+      this.extractFromPDF(file);
+    } else if (file.type.startsWith('image/')) {
+      this.extractFromImage(file);
+    } else {
+      alert('Archivo no válido. Solo se aceptan imágenes o PDFs.');
+
+    }
+  }
+
+  extractFromImage(file: File): void {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('language', 'spa'); // español
+    formData.append('isOverlayRequired', 'false');
+  
+    fetch('https://api.ocr.space/parse/image', {
+      method: 'POST',
+      headers: {
+        apikey: 'K84170735488957', // 🔐 coloca aquí tu clave
+      },
+      body: formData,
+    })
+    .then(res => res.json())
+    .then(data => {
+      const text = data.ParsedResults?.[0]?.ParsedText || '';
+      this.extractData(text);
+    })
+    .catch(err => console.error('OCR error:', err));
+  }
+  
+
+  extractFromPDF(file: File): void {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('language', 'spa'); // Opcional: es para mejor OCR en español
+    formData.append('isOverlayRequired', 'false');
+    formData.append('OCREngine', '2'); // Usa el OCR más preciso (1 o 2)
+  
+    fetch('https://api.ocr.space/parse/image', {
+      method: 'POST',
+      headers: {
+        apikey: 'K84170735488957' // 🔐 Pon aquí tu API Key
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      const text = data.ParsedResults?.[0]?.ParsedText || '';
+      this.extractData(text); // Aquí ya llamas a tu función para extraer RUC, total, etc.
+    })
+    .catch(error => {
+      console.error('Error OCR PDF:', error);
+    });
+  }
+  
+  
+  extractData(text: string): void {
+    console.log('Testo:', text)
+
+    const ruc = text.match(/\b\d{11}\b/)?.[0]; // 11 dígitos
+    const serieNumero = text.match(/\b[F|E|B]\d{3}-\d{1,8}\b/)?.[0];
+    const total = text.match(/Total\s*S?\/?\s*([\d,.]+)/i)?.[1];
+    const fecha = text.match(/\b\d{2}\/\d{2}\/\d{4}\b/)?.[0];
+  
+    console.log('RUC:', ruc);
+    console.log('Serie y Número:', serieNumero);
+    console.log('Total:', total);
+    console.log('Fecha de Emisión:', fecha);
+  
+    // Puedes asignar a variables de clase para mostrarlos en tu HTML 60
+  }
+
 }

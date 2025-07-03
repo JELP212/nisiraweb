@@ -10,7 +10,16 @@
       <div class="flex gap-2">
         <button *ngIf="!mostrarTablaCarpetas" (click)="mostrarCardCrearCarpeta = true"
           class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i
-            class="pi pi-plus text-sm"></i>Crear Carpeta</button>
+            class="pi pi-plus text-sm"></i>Crear Carpeta
+        </button>
+        
+        <div class="p-4">
+          <label class="block mb-2 text-sm font-medium text-gray-700">Selecciona un archivo (PDF o imagen)</label>
+          <input type="file" (change)="onFileSelected($event)" accept=".pdf,image/*" class="mb-4" />
+        
+        </div>
+
+
         <button *ngIf="mostrarTablaCarpetas" (click)="mostrarCardCrear = true"
           class="bg-sky-900 text-white py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 block mx-auto"><i
             class="pi pi-plus text-sm"></i>Crear</button>
@@ -615,7 +624,7 @@
     <dxo-paging [pageSize]="10"></dxo-paging>
     <dxo-pager [visible]="true" [allowedPageSizes]="[10, 20, 30, 50]" [displayMode]="'full'"
       [showPageSizeSelector]="true" [showInfo]="true" [showNavigationButtons]="true"></dxo-pager>
-    <dxo-editing mode="cell" [allowUpdating]="true" [useIcons]="true" [allowAdding]="true"></dxo-editing>
+    <dxo-editing mode="cell" [allowUpdating]="true" [useIcons]="true" [allowAdding]="true" [allowDeleting]="true" ></dxo-editing>
     <dxo-selection mode="single"></dxo-selection>
 
 
@@ -630,11 +639,6 @@
     <dxi-column dataField="cantidad" caption="Cantidad"></dxi-column>
     <dxi-column dataField="producto" caption="Producto"></dxi-column>
 
-    <dxi-column type="buttons" [width]="60">
-      <dxi-button name="edit" icon="edit"></dxi-button>
-      <dxi-button name="save" icon="save"></dxi-button>
-      <dxi-button name="cancel" icon="revert"></dxi-button>
-    </dxi-column>
     <dxo-summary>
       <dxi-total-item column="destino" summaryType="count"> </dxi-total-item>
 
